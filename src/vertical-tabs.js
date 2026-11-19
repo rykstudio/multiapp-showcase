@@ -14,9 +14,9 @@
     document.documentElement.dataset.sidebarCollapsed=String(collapsed);
     document.documentElement.style.setProperty('--sidebar-visible-width',width+'px');
     $('verticalSidebar').hidden=!vertical||!!data.settingsVisible;
-    $('tabLayoutToggle').textContent=vertical?'▤':'◧';
-    $('tabLayoutToggle').title=vertical?'Switch to horizontal tabs':'Switch to vertical tabs';
-    $('tabLayoutToggle').setAttribute('aria-label',$('tabLayoutToggle').title);
+    // Keep the inline SVG glyph mounted; only update the description.
+    $('tabLayoutToggle').dataset.tooltip=vertical?'Switch to horizontal tabs':'Switch to vertical tabs';
+    $('tabLayoutToggle').setAttribute('aria-label',$('tabLayoutToggle').dataset.tooltip);
     $('tabLayoutToggle').disabled=!!data.settingsVisible;
     $('sidebarCollapse').textContent=collapsed?'»':'«';
     $('sidebarCollapse').title=collapsed?'Expand application sidebar':'Collapse application sidebar';

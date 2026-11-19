@@ -190,6 +190,59 @@ html[data-theme="dark"] .sideTabGroup{color:#a7b7cb}
 html[data-theme="dark"] #verticalGroupFilter{background:#101927;color:#dbe7f7;border-color:#38506a}
 .preferencesRow{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:850px){.preferencesRow{grid-template-columns:1fr}}
+
+/* Compact, uniformly sized address-bar controls. */
+#browserTools{align-items:center;justify-content:center;gap:3px;min-width:0;padding:0 4px}
+#browserTools>.iconTool,#browserTools>#responsivePreview{
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 30px;width:30px;height:29px;min-width:30px;max-width:30px;
+  padding:0;margin:0;border:0;border-radius:6px;vertical-align:middle;
+  font-size:0;line-height:1;white-space:nowrap;
+  -webkit-app-region:no-drag;
+}
+#browserTools>.iconTool[hidden],#browserTools>#responsivePreview[hidden]{display:none!important}
+#browserTools>.iconTool:focus-visible{outline:2px solid #2563eb;outline-offset:1px}
+#browserTools>.iconTool[aria-pressed="true"]{background:#dbeafe;color:#1d5ca5}
+#browserTools .toolbarGlyph{width:17px;height:17px;display:block;flex:0 0 17px;
+  stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+  transform:none;vertical-align:middle;pointer-events:none}
+html[data-theme="dark"] #browserTools>.iconTool[aria-pressed="true"]{background:#234a72;color:#d6e9ff}
+@media(max-width:1050px){
+  #browserTools>#responsivePreview{font-size:0!important;min-width:30px!important;width:30px!important;height:29px!important;padding:0!important}
+  #responsivePreview::before{content:none!important}
+}
+/* Hover hints are rendered synchronously within the Electron chrome. On Linux, embedded
+   BrowserViews can cover page-level popovers below the chrome. */
+header{position:relative}
+#instantTooltip{
+  position:fixed;z-index:30;pointer-events:none;
+  padding:5px 9px;border-radius:6px;
+  font:500 11px/1.2 system-ui,-apple-system,'Segoe UI',sans-serif;
+  white-space:nowrap;max-width:min(350px,calc(100vw - 12px));
+  overflow:hidden;text-overflow:ellipsis;
+  background:#1a293d;color:#fff;border:1px solid #40536b;
+  box-shadow:0 2px 7px rgba(0,0,0,.17)
+}
+#instantTooltip[hidden]{display:none!important}
+html[data-theme="dark"] #instantTooltip{background:#e8eef8;color:#12243a;border-color:#c9d4e3}
+
+/* Keep the active native website visible while the trusted HTML login drawer is open. */
+:root{--drawer-width:440px}
+#drawer{width:var(--drawer-width);max-width:100vw;box-shadow:-6px 0 22px rgba(20,37,66,.2)}
+html[data-drawer-open="true"] #mobileStage{right:var(--drawer-width)}
+#drawerFeedback{padding:9px 11px;margin:12px 12px 0;border-radius:7px;font-size:11px;line-height:1.4;
+  background:#eaf2fd;color:#254a72;border:1px solid #c5daf4}
+#drawerFeedback[hidden]{display:none!important}
+#drawerFeedback.error{background:#fff1f2;border-color:#f6cbd0;color:#a32b3d}
+html[data-theme="dark"] #drawerFeedback{background:#243751;border-color:#355778;color:#d6eaff}
+html[data-theme="dark"] #drawerFeedback.error{background:#442833;border-color:#76505c;color:#ffd4df}
+.secretrow{grid-template-columns:minmax(0,1fr) 32px 32px;gap:5px}
+.pasteIconButton{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border:1px solid #dce4ed;
+  background:#f7f9fc;border-radius:7px;padding:0;color:#4b5e73}
+.pasteIconButton:hover{background:#e9f2fc;color:#1558a9}
+.pasteIconButton svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pasteIconButton:focus-visible,.copyIconButton:focus-visible{outline:2px solid #2563eb;outline-offset:1px}
+html[data-theme="dark"] .pasteIconButton{background:#25384d;color:#d7e5f7;border-color:#3d526a}
 </style></head><body>
 <header>
 <div id="toprow">
@@ -202,26 +255,27 @@ html[data-theme="dark"] #verticalGroupFilter{background:#101927;color:#dbe7f7;bo
   </div>
 </div>
 <div id="toolbar" aria-label="Navigation and window controls">
-  <button id="back" title="Back" aria-label="Back">◀</button>
-  <button id="forward" title="Forward" aria-label="Forward">▶</button>
-  <button id="reload" title="Reload" aria-label="Reload">↻</button>
-  <button id="home" title="App home" aria-label="App home">⌂</button>
+  <button id="back" data-tooltip="Back" aria-label="Back">◀</button>
+  <button id="forward" data-tooltip="Forward" aria-label="Forward">▶</button>
+  <button id="reload" data-tooltip="Reload" aria-label="Reload">↻</button>
+  <button id="home" data-tooltip="App home" aria-label="App home">⌂</button>
   <div id="address"></div>
   <div id="browserTools" role="group" aria-label="Browser and application options">
-    <button id="tabLayoutToggle" title="Switch to vertical tabs" aria-label="Switch to vertical tabs">◧</button>
-    <button id="fullscreenButton" title="Enter full screen (F11)" aria-label="Toggle full screen">⛶</button>
-    <button id="settingsButton" title="Manage applications and demo logins" aria-label="Settings">⚙</button>
+    <button type="button" class="iconTool" id="tabLayoutToggle" data-tooltip="Switch to vertical tabs" aria-label="Switch to vertical tabs"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>
+    <button type="button" class="iconTool" id="fullscreenButton" data-tooltip="Enter full screen (F11)" aria-label="Enter full screen (F11)"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg></button>
+    <button type="button" class="iconTool" id="settingsButton" data-tooltip="Settings" aria-label="Settings"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.07.07-1.76 1.76-.07-.07a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.66V21h-2.5v-.94a1.8 1.8 0 0 0-1.1-1.66 1.8 1.8 0 0 0-2 .36l-.07.07-1.76-1.76.07-.07A1.8 1.8 0 0 0 7.9 15a1.8 1.8 0 0 0-1.66-1.1H5.3v-2.5h.94A1.8 1.8 0 0 0 7.9 10.3a1.8 1.8 0 0 0-.36-2l-.07-.07 1.76-1.76.07.07a1.8 1.8 0 0 0 2 .36A1.8 1.8 0 0 0 12.4 5.24V4.3h2.5v.94A1.8 1.8 0 0 0 16 6.9a1.8 1.8 0 0 0 2-.36l.07-.07 1.76 1.76-.07.07a1.8 1.8 0 0 0-.36 2 1.8 1.8 0 0 0 1.66 1.1H22v2.5h-.94A1.8 1.8 0 0 0 19.4 15z" transform="translate(-1.65 -1.65) scale(1.13)"/></svg></button>
+    <button type="button" class="iconTool" id="responsivePreview" hidden aria-pressed="false" data-tooltip="Mobile Preview" aria-label="Mobile Preview"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></svg></button>
   </div>
-  <button id="responsivePreview" hidden aria-pressed="false" title="Preview this desktop website at phone width without changing its saved display mode">▯ Mobile preview</button>
-  <button id="closeSignIn" hidden title="Close embedded page and return to application">✕ Close Page</button>
+  <button id="closeSignIn" hidden data-tooltip="Close embedded page and return to application">✕ Close Page</button>
   <span id="error" role="status"></span>
-  <button id="loginMenu" hidden title="Demo logins" aria-label="Open demo logins">☰ Logins</button>
+  <button id="loginMenu" hidden data-tooltip="Demo logins" aria-label="Open demo logins">☰ Logins</button>
   <div id="windowControls" role="group" aria-label="Window controls">
-    <button id="minimizeButton" title="Minimize window" aria-label="Minimize window">─</button>
-    <button id="maximizeButton" title="Maximize window" aria-label="Maximize window">□</button>
-    <button id="closeButton" title="Close window" aria-label="Close window">✕</button>
+    <button id="minimizeButton" data-tooltip="Minimize window" aria-label="Minimize window">─</button>
+    <button id="maximizeButton" data-tooltip="Maximize window" aria-label="Maximize window">□</button>
+    <button id="closeButton" data-tooltip="Close window" aria-label="Close window">✕</button>
   </div>
 </div>
+<div id="instantTooltip" role="tooltip" hidden></div>
 </header>
 <aside id="verticalSidebar" hidden aria-label="Application tabs">
   <div class="sidebarHead">
@@ -236,7 +290,7 @@ html[data-theme="dark"] #verticalGroupFilter{background:#101927;color:#dbe7f7;bo
 <section id="tabPicker" hidden aria-label="All application tabs"><div id="tabPickerHeader"><input id="tabPickerSearch" type="search" placeholder="Search tabs..." aria-label="Search tabs" autocomplete="off"></div><div id="tabPickerItems" role="listbox" aria-label="Select application"></div></section>
 <div id="mobileStage" hidden aria-label="iPhone-style mobile phone preview"><div id="phoneFrame"><div id="dynamicIsland"></div><div id="homeIndicator"></div></div></div>
 <div id="empty" hidden>No visible applications. Open Settings to show a hidden app or add a new application.</div>
-<aside id="drawer" hidden aria-label="Demo login drawer"><div class="drawerhead"><strong id="drawerTitle">Demo logins</strong><button id="closeDrawer">✕ Close</button></div><div id="loginCards"></div></aside>
+<aside id="drawer" hidden aria-label="Demo login drawer"><div class="drawerhead"><strong id="drawerTitle">Demo logins</strong><button id="closeDrawer" type="button">✕ Close</button></div><p id="drawerFeedback" class="drawerFeedback" role="status" aria-live="polite" hidden></p><div id="loginCards"></div></aside>
 <section id="settings" hidden>
 <div class="settingshead"><div><h1>Settings</h1><div class="note">Manage applications and demo accounts, saved on this computer.</div></div><div class="actions"><button id="cancelSettings">Cancel</button><button class="primary" id="saveSettings">Save changes</button></div></div>
 <div class="actions" style="margin:16px 0"><button class="secondary" id="importSettings">↑ Import settings JSON</button><button class="secondary" id="downloadTemplate">↓ Download JSON template</button></div>
@@ -248,5 +302,6 @@ html[data-theme="dark"] #verticalGroupFilter{background:#101927;color:#dbe7f7;bo
 <div class="settingsTools"><h2>Applications</h2><div class="actions"><button id="expandAllApps" type="button">Expand all</button><button id="collapseAllApps" type="button">Collapse all</button></div></div><div class="note">Apps can be arranged by drag handle or ↑/↓ arrows even while collapsed. Give apps the same group name to filter them together; use Hide to keep an app configured without showing its tab. Deleting remains a separate action. Stable IDs preserve login sessions.</div>
 <div id="appEditor"></div><button class="secondary" id="addApp">+ Add application</button></section>
 <div id="toast" hidden role="status"></div>
+<script src="instant-tooltips.js"></script>
 <script src="vertical-tabs.js"></script>
 <script src="renderer.js"></script></body></html>

@@ -22,4 +22,19 @@ function calculateBounds(width,height,mode='desktop',options={}){
     height:Math.max(1,frameHeight-74)
   };
 }
-module.exports={HEADER_HEIGHT,VERTICAL_HEADER_HEIGHT,COLLAPSED_SIDEBAR_WIDTH,DEFAULT_SIDEBAR_WIDTH,calculateBounds};
+// The HTML drawer cannot paint over an Electron native WebContentsView. Keep
+// the website attached and visible by reserving space at the right edge.
+function calculateDrawerWidth(width,options={}){
+  const w=Math.max(1,Math.floor(width));
+  const sidebar=options.tabLayout==='vertical'
+    ?(options.sidebarCollapsed?COLLAPSED_SIDEBAR_WIDTH:Math.max(180,Math.min(420,options.sidebarWidth||DEFAULT_SIDEBAR_WIDTH)))
+    :0;
+  const available=Math.max(1,w-sidebar);
+  const reserved=Math.max(120,Math.floor(available/2));
+  return Math.max(0,Math.min(440,Math.round(available*.48),available-reserved));
+}
+function calculateDrawerBounds(width,height,mode='desktop',options={}){
+  const drawer=calculateDrawerWidth(width,options);
+  return calculateBounds(Math.max(1,Math.floor(width)-drawer),height,mode,options);
+}
+module.exports={HEADER_HEIGHT,VERTICAL_HEADER_HEIGHT,COLLAPSED_SIDEBAR_WIDTH,DEFAULT_SIDEBAR_WIDTH,calculateBounds,calculateDrawerWidth,calculateDrawerBounds};

@@ -24,6 +24,19 @@ node --test tests/*.test.js
 npm start
 ```
 
+### Ubuntu / GNOME launcher and taskbar icon
+
+Electron can display a gear in Ubuntu's Dock if the running window has no matching XDG desktop entry. MultiApp Showcase sets `app.setDesktopName('com.rykstudio.multiappshowcase.desktop')` before Electron is ready, and the Linux packages configure the matching `desktopName` and `StartupWMClass`.
+
+For **local development**, install the user-scoped launcher once (does not require sudo):
+
+```bash
+bash scripts/install-linux-launcher.sh
+gtk-launch com.rykstudio.multiappshowcase
+```
+
+Launch the app from the Ubuntu application menu or using `gtk-launch`, then unpin any stale Electron/gear launcher and pin **MultiApp Showcase**. The desktop entry points to the project's current Electron executable and ZT PNG. Repeat the installation if you move your repository directory. A built .deb or AppImage uses its own launcher metadata.
+
 ## Import settings and download a template
 
 Open **Settings** and choose **Download JSON template** to save `multiapp-settings-template.json` to your computer. It includes four sample applications, two with multiple demo accounts, a mobile example, and a hidden app. Samples demonstrate groups, order and theme. Replace the example `.example.com` URLs and usernames with your own details.
@@ -59,6 +72,10 @@ In **Settings**, each application now has a **Display mode** selector:
 
 The choice is saved in the embedded SQLite `applications.display_mode` column and is included in normal and encrypted JSON exports/imports (`displayMode: "desktop" | "mobile"`). Old SQLite configurations are migrated automatically, defaulting to Desktop. Each tab retains its original application ID and isolated session. Authentication popups also use the current display mode's centered view bounds. Switching display mode may reload the website to apply its mobile or desktop user agent.
 
+## Address-bar toolbar
+
+The horizontal tabs occupy the full top strip. The address/navigation row contains aligned SVG buttons for switching horizontal/vertical tabs, toggling full screen, opening Settings, and opening the icon-only **Mobile Preview** action when applicable. All controls have accessible labels and immediate hover tooltips rendered in application chrome instead of relying on delayed operating-system `title` hints.
+
 ## Horizontal and vertical application tabs
 
 MultiApp Showcase supports two layouts, both selectable from the toolbar or Settings. The selected layout is saved in SQLite and included in JSON import/export.
@@ -93,6 +110,12 @@ The **☰ Logins** drawer within a running website now uses its own compact coll
 
 Under each website, use **+ Add demo login** to add as many as 50 demo accounts with separate titles and descriptions. Complete the title and username (and optionally a password), then click **Save changes**. If the OS secure credential store is unavailable, packaged builds refuse new passwords and display a warning. Existing legacy plaintext values may remain until cleared or reencrypted. Do not use demo credentials as production passwords.
 
+### Login drawer, Copy and Paste
+
+The login drawer stays visible on the right while the active website remains visible on the left. This avoids the previously blank website caused by detaching Electron's native web view. The drawer adjusts to the available window width, including when a vertical tab sidebar is open.
+
+Each username and saved password has **Copy** and **Paste** icons. **Copy** places the credential on the operating system clipboard. **Paste** is different: click the intended editable input in the visible website, then click Paste alongside the corresponding credential. MultiApp Showcase inserts that value directly into the currently focused page element through Electron; it never returns the secret to the chrome renderer or changes the clipboard. Pasting fails safely if there is no selected editable field. Some websites that put login fields inside inaccessible or third-party frames may require using Copy instead.
+
 ## Managing applications
 
 Use the **Settings** button in the top-right of the app. Enter the application title and its name, unique stable ID and URL. Then add optional demo logins. Click **Save changes**. The changes persist across launches.
@@ -111,7 +134,7 @@ The original ZT artwork is retained unchanged at `build/zt-multiapp-desktop.svg`
 
 **Development mode:** `npm start` bypasses electron-builder's launcher setup. Electron's desktop window therefore explicitly loads the rasterized `src/assets/zt-app-icon.png`, generated from the same SVG. On macOS, development runs set the Dock icon using `app.dock.setIcon`; installed .app bundles embed the platform icon from the vector source. On Linux, the window/taskbar uses the bundled PNG, while installed packages use their launcher icon.
 
-If `npm start` is already running after pulling the changes, fully quit the Electron process and start it again. Desktop environments sometimes cache launcher icons: clear the stale pinned launcher and reopen the freshly built package if its icon remains generic.
+If `npm start` is already running after pulling the changes, fully quit the Electron process and start it again. On Ubuntu, run `bash scripts/install-linux-launcher.sh` and launch with `gtk-launch com.rykstudio.multiappshowcase` so the desktop entry matches the running app. Desktop environments sometimes cache launcher icons: clear any stale Electron/gear pin before pinning the new launcher.
 
 
 ## Build distributables

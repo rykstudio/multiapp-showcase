@@ -6,9 +6,13 @@ const {SettingsDatabase}=require('./settings-db');
 const {encryptJson,decryptJson}=require('./crypto-export');
 const {withSavedOrder,inSavedOrder} = require('./app-order');
 const {canOpenEmbedded}=require('./popup-policy');
-const {calculateBounds}=require('./view-layout');
+const {calculateBounds,calculateDrawerBounds}=require('./view-layout');
 const {recordDiagnostic}=require('./diagnostics');
 const {theme:validateTheme,group:validateGroup,hidden:validateHidden,tabLayout:validateTabLayout,sidebarCollapsed:validateSidebarCollapsed,sidebarWidth:validateSidebarWidth,visibleApps,nextActiveId}=require('./config-features');
+
+// Match the installed .desktop filename so GNOME/KDE can associate the running
+// Electron process with the branded app icon instead of an unknown gear icon.
+if(process.platform==='linux')app.setDesktopName('com.rykstudio.multiappshowcase.desktop');
 
 // Only the main local UI frame may send privileged IPC requests.
 function secureHandle(channel, handler) {
@@ -259,14 +263,15 @@ function toggleResponsivePreview(id) {
   return {ok:true,previewMobile:entry.previewMobile};
 }
 function fitView() {
-  if (!win || !activeId || settingsVisible || drawerVisible) return;
-  const entry = entries.get(activeId);
-  if (!entry) return;
-  const [w,h] = win.getContentSize();
+  if (!win || !activeId || settingsVisible) return;
+  const entry=entries.get(activeId);
+  if(!entry)return;
+  const [w,h]=win.getContentSize();
   const mode=effectiveDisplayMode(activeId);
-  const bounds=config?.tabLayout==='vertical'
-    ? calculateBounds(w,h,mode,{tabLayout:'vertical',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280})
-    : calculateBounds(w,h,mode);
+  const layout={tabLayout:config?.tabLayout||'horizontal',sidebarCollapsed:!!config?.sidebarCollapsed,sidebarWidth:config?.sidebarWidth||280};
+  const bounds=drawerVisible
+    ? calculateDrawerBounds(w,h,mode,layout)
+    : calculateBounds(w,h,mode,layout);
   (entry.popup || entry.view).setBounds(bounds);
 }
 function hideView() {
@@ -345,16 +350,16 @@ function createView(item) {
         child.on('destroyed',()=>{
           if(entry.popup!==popup)return;
           entry.popup=null;
-          if(win && !win.isDestroyed() && activeId===item.id && !settingsVisible && !drawerVisible) {
+          if(win && !win.isDestroyed() && activeId===item.id && !settingsVisible) {
             try {win.removeBrowserView(popup);}catch{}
             win.contentView.addChildView(view);
             fitView();
           }
           emit();
         });
-        if(activeId===item.id && !settingsVisible && !drawerVisible) hideView();
+        if(activeId===item.id && !settingsVisible) hideView();
         entry.popup=popup;
-        if(win && activeId===item.id && !settingsVisible && !drawerVisible) {
+        if(win && activeId===item.id && !settingsVisible) {
           win.addBrowserView(popup);
           fitView();
         }
@@ -463,6 +468,40 @@ function copyLogin(id,loginId,field) {
   clipboard.writeText(value);
   return {ok:true};
 }
+// The value never crosses into the trusted settings renderer or the OS clipboard.
+// Only a deliberate Paste click can insert into a currently focused website field.
+const FOCUSED_EDITABLE_CHECK=`(()=>{
+  const el=document.activeElement;
+  if(!el||el===document.body||el===document.documentElement)return false;
+  if(el.isContentEditable)return true;
+  const tag=el.tagName?.toUpperCase();
+  if(tag==='TEXTAREA')return !el.disabled&&!el.readOnly;
+  if(tag==='INPUT')return !el.disabled&&!el.readOnly&&
+    ['text','password','email','search','tel','url','number'].includes(el.type);
+  return false;
+})()`;
+async function pasteLogin(id,loginId,field){
+  if(!drawerVisible||settingsVisible||id!==activeId||!['username','password'].includes(field))
+    throw new Error('Paste is only available from the open login drawer');
+  const entry=entries.get(id);
+  const wc=(entry?.popup||entry?.view)?.webContents;
+  if(!wc||wc.isDestroyed())throw new Error('The active website is not available');
+  const frame=wc.focusedFrame&&!wc.focusedFrame.isDestroyed()?wc.focusedFrame:wc.mainFrame;
+  if(!frame||frame.isDestroyed())throw new Error('Select a website input field before pasting');
+  let editable=false;
+  try{editable=await frame.executeJavaScript(FOCUSED_EDITABLE_CHECK);}
+  catch{throw new Error('Could not identify the active website input field');}
+  if(!editable)throw new Error('Click an editable field in the website, then select Paste');
+  // Check again after awaiting potentially untrusted page state.
+  if(id!==activeId||!drawerVisible||settingsVisible||wc.isDestroyed())throw new Error('Active website changed during Paste');
+  const login=config.apps.find(a=>a.id===id)?.logins.find(l=>l.id===loginId);
+  if(!login)throw new Error('Demo login not found');
+  const value=field==='username'?login.username:(login.passwordEnc?decryptPassword(login.passwordEnc):'');
+  if(!value)throw new Error('No '+field+' configured');
+  wc.focus();
+  await wc.insertText(value);
+  return {ok:true};
+}
 function createWindow(){
   win=new BrowserWindow({width:1320,height:860,minWidth:740,minHeight:540,title:'MultiApp Showcase',frame:false,
     icon:appWindowIcon(),backgroundColor:'#fff',webPreferences:{preload:path.join(__dirname,'preload.js'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
@@ -542,17 +581,19 @@ app.whenReady().then(()=>{
   secureHandle('settings:export',(_e,password)=>exportSettings(password));
   secureHandle('settings:template',saveImportTemplate);
   secureHandle('drawer:set',(_e,visible)=>{
-    if (typeof visible !== 'boolean' || settingsVisible) return {ok:false};
-    if (visible && !drawerVisible) hideView();
-    drawerVisible = visible;
-    if (!visible && activeId && entries.has(activeId)) { attachActiveView(entries.get(activeId));fitView(); }
+    if(typeof visible!=='boolean' || settingsVisible || !activeId || !entries.has(activeId))return {ok:false};
+    // Keep the native website in place and visible. Its bounds exclude the
+    // right-side drawer so the trusted HTML UI can appear without z-order issues.
+    drawerVisible=visible;
+    fitView();
     return {ok:true};
   });
   secureHandle('login:list',(_e,id)=>{
     if(id!==activeId)return [];
     return (config.apps.find(a=>a.id===id)?.logins || []).map(l=>({id:l.id,title:l.title,description:l.description,username:l.username,hasPassword:!!l.passwordEnc}));
   });
-  secureHandle('login:copy',(_e,d)=>copyLogin(d.id,d.loginId,d.field));
+  secureHandle('login:copy',(_e,d)=>d&&copyLogin(d.id,d.loginId,d.field));
+  secureHandle('login:paste',(_e,d)=>d?pasteLogin(d.id,d.loginId,d.field):{ok:false});
   secureHandle('security:status',()=>({encryptionAvailable:encryptionReady(),developmentPlaintextOverride:!app.isPackaged && process.env.MULTIAPP_ALLOW_PLAINTEXT_DEMO_PASSWORDS==='1'}));
   createWindow();
   app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow();});

@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('multiApp',{
   setDrawer:visible=>ipcRenderer.invoke('drawer:set',visible),
   listLogins:id=>ipcRenderer.invoke('login:list',id),
   copyLogin:(id,loginId,field)=>ipcRenderer.invoke('login:copy',{id,loginId,field}),
+  pasteLogin:(id,loginId,field)=>ipcRenderer.invoke('login:paste',{id,loginId,field}),
   securityStatus:()=>ipcRenderer.invoke('security:status'),
   onState:callback=>{const fn=(_,state)=>callback(state);ipcRenderer.on('app:state',fn);return ()=>ipcRenderer.removeListener('app:state',fn);}
 });
