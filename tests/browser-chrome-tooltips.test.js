@@ -61,3 +61,52 @@ test('disabled controls never show tooltips',()=>{
   assert.equal(hint.hidden,true);
   assert.equal(button['aria-describedby'],undefined);
 });
+
+test('native ImageView receives a compact PNG above embedded website on hover',()=>{
+  const listeners=new Map();
+  const sent=[];
+  const hint={hidden:true,style:{},textContent:'',
+    getBoundingClientRect(){return {width:120,height:24};}};
+  const button={disabled:false,hidden:false,isConnected:true,dataset:{tooltip:'Settings'},
+    getBoundingClientRect(){return {left:1040,top:40,bottom:69,width:30,height:29};},
+    setAttribute(){},removeAttribute(){},contains(target){return target===this;}};
+  const ctx={
+    font:'',fillStyle:'',strokeStyle:'',lineWidth:0,textBaseline:'',
+    measureText(){return {width:63};},
+    setTransform(){},beginPath(){},roundRect(){},fill(){},stroke(){},fillText(){}
+  };
+  const canvas={getContext(){return ctx;},toDataURL(){return 'data:image/png;base64,ZGVtbw==';}};
+  const document={
+    getElementById(id){return id==='instantTooltip'?hint:null;},
+    querySelector(){return {getBoundingClientRect(){return {bottom:71};}};},
+    createElement(tag){assert.equal(tag,'canvas');return canvas;},
+    addEventListener(name,fn){listeners.set(name,fn);}
+  };
+  const window={innerWidth:1280,devicePixelRatio:1,addEventListener(){},
+    multiApp:{
+      showTooltip(payload){sent.push({action:'show',payload});return Promise.resolve({ok:true});},
+      hideTooltip(){sent.push({action:'hide'});return Promise.resolve({ok:true});}
+    }
+  };
+  vm.runInNewContext(source,{document,window});
+  listeners.get('pointerover')({target:{closest:()=>button}});
+  assert.equal(sent[0].action,'show');
+  assert.equal(sent[0].payload.y,77);
+  assert.ok(sent[0].payload.width>=70&&sent[0].payload.width<=220);
+  assert.match(sent[0].payload.png,/^data:image\/png;base64,/);
+  listeners.get('pointerout')({target:button,relatedTarget:null});
+  assert.equal(sent.at(-1).action,'hide');
+  assert.equal(hint.hidden,true);
+});
+
+test('native tooltip view is added above active website using restricted IPC',()=>{
+  const main=fs.readFileSync(path.join(__dirname,'../src/main.js'),'utf8');
+  const preload=fs.readFileSync(path.join(__dirname,'../src/preload.js'),'utf8');
+  assert.match(main,/new ImageView\(\)/);
+  assert.match(main,/win\.contentView\.addChildView\(tooltipView\)/);
+  assert.match(main,/win\.contentView\.removeChildView\(tooltipView\)/);
+  assert.match(main,/secureHandle\('tooltip:show'/);
+  assert.match(main,/secureHandle\('tooltip:hide'/);
+  assert.match(preload,/showTooltip:data=>ipcRenderer\.invoke\('tooltip:show',data\)/);
+  assert.match(preload,/hideTooltip:\(\)=>ipcRenderer\.invoke\('tooltip:hide'\)/);
+});
