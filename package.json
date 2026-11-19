@@ -54,7 +54,9 @@
       "category": "Office",
       "icon": "build/zt-multiapp-desktop.svg",
       "executableName": "multiapp-showcase",
-      "synopsis": "MultiApp Showcase"
+      "synopsis": "MultiApp Showcase",
+      "syncDesktopName": true
     }
-  }
+  },
+  "desktopName": "com.rykstudio.multiappshowcase.desktop"
 }
