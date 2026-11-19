@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, BrowserView, WebContentsView, ipcMain, shell, session, Menu, clipboard, safeStorage, dialog, nativeTheme, nativeImage } = require('electron');
+const { app, BrowserWindow, BrowserView, WebContentsView, ipcMain, shell, session, Menu, clipboard, safeStorage, dialog, nativeTheme, nativeImage, ImageView } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const {SettingsDatabase}=require('./settings-db');
@@ -30,6 +30,35 @@ function appWindowIcon(){
   const icon=nativeImage.createFromPath(APP_ICON_PATH);
   if(icon.isEmpty())throw new Error('The bundled ZT application PNG icon is missing or unreadable');
   return icon;
+}
+// Tooltip labels below the header overlap native website views. An ImageView
+// renders a small inert PNG above those views without a second browser window.
+let tooltipView=null;
+function showNativeTooltip(data) {
+  if(!win || win.isDestroyed() || typeof ImageView!=='function' ||
+     !data || typeof data!=='object')return {ok:false};
+  if(typeof data.png!=='string'||data.png.length>80000||
+     !data.png.startsWith('data:image/png;base64,'))return {ok:false};
+  const {x,y,width,height}=data;
+  if(![x,y,width,height].every(Number.isInteger)||
+     width<30||width>240||height<18||height>42)return {ok:false};
+  const [w,h]=win.getContentSize();
+  if(x<0||y<0||x+width>w||y+height>h)return {ok:false};
+  try{
+    const image=nativeImage.createFromDataURL(data.png);
+    const size=image.getSize();
+    if(image.isEmpty()||size.width>1000||size.height>168)return {ok:false};
+    if(!tooltipView)tooltipView=new ImageView();
+    tooltipView.setImage(image);
+    tooltipView.setBounds({x,y,width,height});
+    win.contentView.addChildView(tooltipView); // bring above active website
+    tooltipView.setVisible(true);
+    return {ok:true};
+  }catch{return {ok:false};}
+}
+function hideNativeTooltip(){
+  if(tooltipView&&win&&!win.isDestroyed())win.contentView.removeChildView(tooltipView);
+  return {ok:true};
 }
 const BAR_HEIGHT = 71;
 const entries = new Map();
@@ -525,7 +554,7 @@ function createWindow(){
   win.webContents.on('before-input-event',(event,input)=>{
     if(input.type==='keyDown' && !input.isAutoRepeat && input.key==='F11') { event.preventDefault(); toggleFullscreen(); }
   });
-  win.on('closed',()=>{win=null;for(const id of [...entries.keys()])discard(id);});
+  win.on('closed',()=>{tooltipView=null;win=null;for(const id of [...entries.keys()])discard(id);});
   reloadConfig();
   win.webContents.on('did-finish-load',emit);
 }
@@ -568,6 +597,8 @@ app.whenReady().then(()=>{
     if(!prefs||typeof prefs!=='object'||Array.isArray(prefs)||settingsVisible)return {ok:false};
     return saveLayoutPreferences(prefs);
   });
+  secureHandle('tooltip:show',(_e,data)=>showNativeTooltip(data));
+  secureHandle('tooltip:hide',()=>hideNativeTooltip());
   secureHandle('tab:toggle-responsive-preview',(_e,id)=>toggleResponsivePreview(id));
   secureHandle('tab:close-popup',(_e,id)=>typeof id==='string' && id===activeId ? closePopup(id) : {ok:false});
   secureHandle('tab:activate',(_e,id)=>{if(typeof id==='string')activate(id);return state();});
