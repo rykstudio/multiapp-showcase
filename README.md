@@ -35,7 +35,16 @@ bash scripts/install-linux-launcher.sh
 gtk-launch com.rykstudio.multiappshowcase
 ```
 
-Launch the app from the Ubuntu application menu or using `gtk-launch`, then unpin any stale Electron/gear launcher and pin **MultiApp Showcase**. The desktop entry points to the project's current Electron executable and ZT PNG. Repeat the installation if you move your repository directory. A built .deb or AppImage uses its own launcher metadata.
+Launch the app from the Ubuntu application menu or using `gtk-launch`, then unpin any stale Electron/gear launcher and pin **MultiApp Showcase**. The desktop entry runs `scripts/launch-linux.sh`, which invokes `npm start` rather than assuming Electron's executable is present at a particular path. The launcher works with Node.js installations configured through NVM, too. Repeat the installation if you move your repository directory. A built .deb or AppImage uses its own launcher metadata.
+
+If the launcher or `npm start` fails after `npm ci`, inspect the real error in your terminal:
+
+```bash
+ls -l node_modules/electron/package.json node_modules/.bin/electron
+bash scripts/launch-linux.sh
+```
+
+If Electron reports a missing downloaded binary, the npm package may have been installed while installation scripts were blocked. Review npm's install-script policy and run the trusted Electron package's installer manually if appropriate: `node node_modules/electron/install.js`. No global `sudo npm install` is required.
 
 ## Import settings and download a template
 
