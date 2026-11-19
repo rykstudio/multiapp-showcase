@@ -261,7 +261,11 @@ function showSettings(){
   closeDrawer(false);
   Promise.all([window.multiApp.openSettings(),window.multiApp.securityStatus()]).then(([config,status])=>{
     draft=structuredClone(config);
+    draft.groups||=[...new Set(draft.apps.map(a=>a.group||'').filter(Boolean))];
     settingsBaseline=JSON.stringify(config);
+    $('exportAccordion').open=false;
+    $('exportPassphrase').value='';
+    $('exportConfirm').value='';
     expandedAppIds.clear();expandedLoginIds.clear();
     if(draft.apps[0])expandedAppIds.add(draft.apps[0].id);
     $('securityNote').textContent=status.encryptionAvailable
@@ -303,10 +307,80 @@ function summaryAction(text,description,action){
   control.setAttribute('aria-label',description);
   return control;
 }
+function validGroupName(value,except=''){
+  const name=String(value||'').trim();
+  if(!name||name.length>64)throw new Error('Enter a group name of 1–64 characters');
+  if((draft.groups||[]).some(g=>g!==except&&g.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US')))
+    throw new Error('A group with that name already exists');
+  return name;
+}
+function renderGroupManager(){
+  if(!draft)return;
+  draft.groups||=[];
+  const target=$('groupManagerList');
+  target.replaceChildren();
+  $('groupCount').textContent=draft.groups.length+' configured';
+  if(!draft.groups.length){
+    target.append(el('p',{class:'note',text:'No groups yet. Create one above, then assign applications below.'}));
+    return;
+  }
+  for(const original of draft.groups){
+    const total=draft.apps.filter(a=>a.group===original).length;
+    const name=el('input',{value:original,maxLength:64,type:'text'});
+    name.setAttribute('aria-label','Group name for '+original);
+    const row=el('div',{class:'groupManagerItem'});
+    row.setAttribute('role','listitem');
+    const wrap=el('label',{class:'field groupManagerName'},[el('span',{text:'Group name'}),name]);
+    const count=el('span',{class:'groupManagerCount',text:total+' '+(total===1?'app':'apps')});
+    row.append(wrap,count,
+      button('Rename',()=>{
+        try{
+          const revised=validGroupName(name.value,original);
+          if(revised===original)return;
+          draft.groups[draft.groups.indexOf(original)]=revised;
+          for(const app of draft.apps)if(app.group===original)app.group=revised;
+          renderSettings();
+          reportSettingsChanges();
+        }catch(err){toast(err.message);name.focus();}
+      }),
+      button('Delete',()=>{
+        if(!confirm('Delete group "'+original+'"? '+total+' assigned '+(total===1?'app will':'apps will')+' become ungrouped.'))return;
+        draft.groups=draft.groups.filter(g=>g!==original);
+        for(const app of draft.apps)if(app.group===original)app.group='';
+        renderSettings();
+        reportSettingsChanges();
+      },'danger')
+    );
+    target.append(row);
+  }
+}
+$('addGroup').onclick=()=>{
+  if(!draft)return;
+  const input=$('newGroupName');
+  try{
+    if((draft.groups||[]).length>=40)throw new Error('Maximum 40 groups');
+    const name=validGroupName(input.value);
+    draft.groups.push(name);
+    input.value='';
+    renderSettings();
+    reportSettingsChanges();
+    toast('Group created. Assign applications using their Group dropdown, then save.');
+  }catch(err){toast(err.message);input.focus();}
+};
+$('newGroupName').onkeydown=event=>{
+  if(event.key==='Enter'){event.preventDefault();$('addGroup').click();}
+};
+$('exportAccordion').addEventListener('toggle',()=>{
+  if(!$('exportAccordion').open){
+    $('exportPassphrase').value='';
+    $('exportConfirm').value='';
+  }
+});
 function renderSettings(){
   if(!draft)return;
   draft.title=$('platformTitle').value||draft.title;
   $('platformTitle').value=draft.title;
+  renderGroupManager();
   const target=$('appEditor');
   target.replaceChildren();
   draft.apps.forEach((app,index)=>{
@@ -382,12 +456,22 @@ function renderSettings(){
     }
     modeControl.value=app.displayMode||'desktop';
     modeControl.onchange=()=>{app.displayMode=modeControl.value;meta.textContent=appMetaText(app);reportSettingsChanges();};
+    const groupControl=el('select',{class:'groupSelector'});
+    const none=el('option',{text:'Ungrouped'});none.value='';groupControl.append(none);
+    for(const name of draft.groups){
+      const option=el('option',{text:name});option.value=name;groupControl.append(option);
+    }
+    groupControl.value=app.group||'';
+    groupControl.setAttribute('aria-label','Group for '+(app.name||'application'));
+    groupControl.onchange=()=>{
+      app.group=groupControl.value;
+      meta.textContent=appMetaText(app);
+      renderGroupManager();
+      reportSettingsChanges();
+    };
     content.append(el('div',{class:'grid2'},[
       el('label',{class:'field'},[el('span',{text:'Display mode'}),modeControl]),
-      field('Group (optional)',app.group||'',v=>{
-        app.group=v;
-        meta.textContent=appMetaText(app);
-      },{maxLength:64,placeholder:'e.g. Operations, Sales or Personal'})
+      el('label',{class:'field'},[el('span',{text:'Group'}),groupControl])
     ]));
     const loginTitle=el('div',{class:'settingsTools'},[
       el('div',{},[
@@ -640,16 +724,29 @@ async function openDrawer(){
       ]));
       const details=el('div',{class:'loginCardContent'},[
         el('p',{text:login.description}),
-        el('div',{class:'secretrow'},[
-          el('code',{text:login.username||'No username'}),
-          copyIconButton(login.id,'username'),
-          pasteIconButton(login.id,'username')
+        el('div',{class:'credentialField'},[
+          el('span',{class:'credentialLabel',text:'Username'}),
+          el('div',{class:'secretrow'},[
+            el('code',{text:login.username||'No username'}),
+            copyIconButton(login.id,'username'),
+            pasteIconButton(login.id,'username')
+          ])
         ])
       ]);
-      if(login.hasPassword)details.append(el('div',{class:'secretrow'},[
-        el('code',{text:'••••••••'}),
-        copyIconButton(login.id,'password'),
-        pasteIconButton(login.id,'password')
+      const passwordCopy=copyIconButton(login.id,'password');
+      const passwordPaste=pasteIconButton(login.id,'password');
+      if(!login.hasPassword){
+        passwordCopy.disabled=true;
+        passwordPaste.disabled=true;
+        passwordCopy.dataset.tooltip='No saved password';
+        passwordPaste.dataset.tooltip='Add password in Settings first';
+      }
+      details.append(el('div',{class:'credentialField'+(login.hasPassword?'':' isMissing')},[
+        el('span',{class:'credentialLabel',text:'Password'}),
+        el('div',{class:'secretrow'},[
+          el('code',{text:login.hasPassword?'••••••••':'No password saved'}),
+          passwordCopy,passwordPaste
+        ])
       ]));
       card.append(details);
       $('loginCards').append(card);
