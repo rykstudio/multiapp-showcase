@@ -9,6 +9,11 @@
   function render(data,shownApps){
     current=data;
     const vertical=data.tabLayout==='vertical',collapsed=!!data.sidebarCollapsed;
+    // Vertical mode has no top tab strip. Keep the same window buttons available
+    // at the right of its single toolbar without creating duplicate controls.
+    const controls=$('windowControls');
+    const host=vertical?$('toolbar'):$('toprow');
+    if(controls.parentElement!==host)host.append(controls);
     const width=collapsed?56:(data.sidebarWidth||280);
     document.documentElement.dataset.tabLayout=vertical?'vertical':'horizontal';
     document.documentElement.dataset.sidebarCollapsed=String(collapsed);
