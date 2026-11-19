@@ -4,6 +4,8 @@ contextBridge.exposeInMainWorld('multiApp',{
   ready:()=>ipcRenderer.invoke('app:get-state'),
   toggleFullscreen:()=>ipcRenderer.invoke('window:toggle-fullscreen'),
   windowControl:action=>ipcRenderer.invoke('window:control',action),
+  showTooltip:data=>ipcRenderer.invoke('tooltip:show',data),
+  hideTooltip:()=>ipcRenderer.invoke('tooltip:hide'),
   activate:id=>ipcRenderer.invoke('tab:activate',id),
   updateLayout:prefs=>ipcRenderer.invoke('layout:update',prefs),
   toggleResponsivePreview:id=>ipcRenderer.invoke('tab:toggle-responsive-preview',id),
