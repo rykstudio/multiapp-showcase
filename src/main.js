@@ -172,7 +172,7 @@ async function exportSettings(passphrase) {
   const encrypted=encryptJson(body,passphrase);
   const selected=await dialog.showSaveDialog(win,{
     title:'Export encrypted application settings',
-    defaultPath:path.join(app.getPath('downloads'),'multiapp-settings-encrypted.json'),
+    defaultPath:path.join(app.getPath('downloads'),'multiapp-showcase-settings-encrypted.json'),
     filters:[{name:'Encrypted JSON configuration',extensions:['json']}]
   });
   if(selected.canceled||!selected.filePath)return {cancelled:true};
@@ -183,7 +183,7 @@ async function saveImportTemplate() {
   const template = path.join(__dirname, '../config/import-template.json');
   const selected = await dialog.showSaveDialog(win, {
     title:'Download settings JSON template',
-    defaultPath:path.join(app.getPath('downloads'),'multiapp-settings-template.json'),
+    defaultPath:path.join(app.getPath('downloads'),'multiapp-showcase-settings-template.json'),
     filters:[{name:'JSON configuration',extensions:['json']}]
   });
   if (selected.canceled || !selected.filePath) return {cancelled:true};
