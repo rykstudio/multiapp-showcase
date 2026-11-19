@@ -16,8 +16,8 @@ test('responsive preview is per-tab and not persisted in saved settings',()=>{
   // Native views now use layout-aware bounds and reserve a visible browser area
   // while the login drawer is open, including in mobile preview mode.
   assert.match(main,/const bounds=drawerVisible/);
-  assert.match(main,/calculateBounds\\(w,h,mode,layout\\)/);
-  assert.match(main,/calculateDrawerBounds\\(w,h,mode,layout\\)/);
+  assert.match(main,/calculateBounds\(w,h,mode,layout\)/);
+  assert.match(main,/calculateDrawerBounds\(w,h,mode,layout\)/);
   assert.match(main,/previewMobile:!!entry\?\.previewMobile/);
   assert.doesNotMatch(main,/settingsDB\.write\(.*previewMobile/);
   assert.match(preload,/toggleResponsivePreview/);
