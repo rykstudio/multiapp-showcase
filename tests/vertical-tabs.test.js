@@ -42,13 +42,17 @@ test('sidebar preferences reject invalid or unsafe sizes and preserve legacy def
   assert.equal(sidebarCollapsed(true),true);
   assert.throws(()=>sidebarCollapsed('true'));
 });
-test('top bar only carries tabs while fullscreen and settings share address toolbar',()=>{
+test('window controls stay on horizontal tab bar and move to toolbar for vertical tabs',()=>{
   const top=html.slice(html.indexOf('<div id="toprow">'),html.indexOf('<div id="toolbar"'));
   const toolbar=html.slice(html.indexOf('<div id="toolbar"'),html.indexOf('</header>'));
-  for(const id of ['tabs','tabLeft','tabRight','tabPickerButton'])assert.match(top,new RegExp('id="'+id+'"'));
-  for(const id of ['fullscreenButton','settingsButton','minimizeButton','maximizeButton','closeButton','tabLayoutToggle','address'])
+  for(const id of ['tabs','tabLeft','tabRight','tabPickerButton','windowControls','minimizeButton','maximizeButton','closeButton'])
+    assert.match(top,new RegExp('id="'+id+'"'));
+  for(const id of ['fullscreenButton','settingsButton','tabLayoutToggle','responsivePreview','address'])
     assert.match(toolbar,new RegExp('id="'+id+'"'));
   assert.doesNotMatch(top,/id="fullscreenButton"|id="settingsButton"|id="topActions"/);
+  assert.doesNotMatch(toolbar,/id="minimizeButton"|id="maximizeButton"|id="closeButton"/);
+  assert.match(sidebar,/const host=vertical\?\$\('toolbar'\):\$\('toprow'\)/);
+  assert.match(sidebar,/if\(controls\.parentElement!==host\)host\.append\(controls\)/);
 });
 test('vertical tabs support filter, collapse, resize, accessible selection and sidebar search',()=>{
   for(const id of ['verticalSidebar','verticalTabList','verticalGroupFilter','sidebarCollapse','sidebarSearch','sidebarResizeHandle','tabLayoutSelect'])

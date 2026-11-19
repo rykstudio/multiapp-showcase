@@ -115,9 +115,13 @@ function render(data) {
   const activeApp=data.apps.find(a=>a.id===data.activeId);
   $('mobileStage').hidden=data.settingsVisible||(activeApp?.displayMode!=='mobile'&&!activeApp?.previewMobile);
   $('responsivePreview').hidden=data.settingsVisible||!activeApp||activeApp.displayMode==='mobile';
-  $('responsivePreview').setAttribute('aria-pressed',String(!!activeApp?.previewMobile));
-  $('responsivePreview').dataset.tooltip=activeApp?.previewMobile?'Desktop View':'Mobile Preview';
-  $('responsivePreview').setAttribute('aria-label',$('responsivePreview').dataset.tooltip);
+  const previewOn=!!activeApp?.previewMobile;
+  const previewButton=$('responsivePreview');
+  previewButton.querySelector('[data-preview-icon="mobile"]').hidden=previewOn;
+  previewButton.querySelector('[data-preview-icon="desktop"]').hidden=!previewOn;
+  previewButton.setAttribute('aria-pressed',String(previewOn));
+  previewButton.dataset.tooltip=previewOn?'Desktop View':'Mobile Preview';
+  previewButton.setAttribute('aria-label',previewButton.dataset.tooltip);
   const shownApps=visibleTabApps(data);
   window.verticalTabs.render(data,shownApps);
   const tabIds=shownApps.map(a=>a.id).join('\u0000');

@@ -83,7 +83,7 @@ The choice is saved in the embedded SQLite `applications.display_mode` column an
 
 ## Address-bar toolbar
 
-The horizontal tabs occupy the full top strip. The address/navigation row contains aligned SVG buttons for switching horizontal/vertical tabs, toggling full screen, opening Settings, and opening the icon-only **Mobile Preview** action when applicable. All controls have accessible labels and immediate hover tooltips rendered in application chrome instead of relying on delayed operating-system `title` hints.
+The horizontal tabs occupy the full top strip. The address/navigation row contains aligned SVG buttons for switching horizontal/vertical tabs, toggling full screen, opening Settings, and opening the icon-only **Mobile Preview** action when applicable. All controls have accessible labels and immediate compact hover tips. The Settings glyph uses a symmetric gear, and the Mobile Preview button switches to a desktop-monitor glyph when active, then back to a phone glyph on return.
 
 ### Encrypted export accordion
 
@@ -91,14 +91,14 @@ The horizontal tabs occupy the full top strip. The address/navigation row contai
 
 ### Immediate tooltips
 
-Icon hover descriptions appear immediately **inside the address display area** (or inside a credential's value cell in the login drawer) so they never obscure neighboring action icons. The tooltip's full meaning is always available to keyboard and screen-reader users via the button's accessible label.
+Icon hover descriptions appear immediately as compact captions **beneath the complete toolbar**, centered near the hovered icon and clamped to the window edge. They no longer replace the address display or cover adjacent tab/window controls. The tooltip's full meaning is always available to keyboard and screen-reader users via the button's accessible label.
 
 ## Horizontal and vertical application tabs
 
 MultiApp Showcase supports two layouts, both selectable from the toolbar or Settings. The selected layout is saved in SQLite and included in JSON import/export.
 
-- **Horizontal tabs:** The entire upper row belongs to application tabs, group filter, overflow chevrons and the searchable dropdown. Full screen, Settings, navigation, responsive preview and window controls share the lower address toolbar.
-- **Vertical sidebar:** A left-hand list of application tabs with rounded initial-letter icons, labels and group information. Use the chevron at the sidebar top to collapse to a slim 56-pixel icon rail, or expand back to the saved width (180–420 pixels). Resize by dragging the sidebar edge or using arrow keys when the resize separator has focus. Use the search button to open the existing keyboard-accessible tab picker.
+- **Horizontal tabs:** The upper row holds application tabs, the group filter, overflow chevrons and the searchable dropdown, with **Minimize, Maximize and Close** on the right edge. The lower address row holds navigation, Full screen, Settings and the icon-only Mobile Preview toggle.
+- **Vertical sidebar:** With no horizontal tab strip, the same Minimize, Maximize and Close buttons move to the right edge of the remaining address toolbar. A left-hand list of application tabs has rounded initial-letter icons, labels and group information. Use the chevron at the sidebar top to collapse to a slim 56-pixel icon rail, or expand back to the saved width (180–420 pixels). Resize by dragging the sidebar edge or using arrow keys when the resize separator has focus. Use the search button to open the existing keyboard-accessible tab picker.
 - The sidebar is hidden while Settings is open; embedded web views automatically reposition to avoid covering the sidebar. Saved app IDs, browser sessions, tabs, demo logins, and the mobile phone-preview remain unchanged.
 
 ## Workspace appearance, groups, visibility and demo accounts
