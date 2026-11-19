@@ -4,14 +4,14 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
-electron="$root/node_modules/electron/dist/electron"
+launcher="$root/scripts/launch-linux.sh"
 icon="$root/src/assets/zt-app-icon.png"
 desktop_id="com.rykstudio.multiappshowcase"
 applications="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 desktop_file="$applications/$desktop_id.desktop"
 
-if [[ ! -x "$electron" ]]; then
-  echo "Electron is not installed. Run npm ci from $root first." >&2
+if [[ ! -f "$launcher" ]]; then
+  echo "MultiApp Showcase launcher helper is missing: $launcher" >&2
   exit 1
 fi
 if [[ ! -f "$icon" ]]; then
@@ -31,8 +31,8 @@ Type=Application
 Name=MultiApp Showcase
 GenericName=Multi-Application Browser
 Comment=Showcase websites in isolated desktop sessions
-Exec="$electron" "$root"
-TryExec=$electron
+Exec=/usr/bin/bash "$launcher"
+TryExec=/usr/bin/bash
 Icon=$icon
 Terminal=false
 StartupNotify=true
@@ -48,4 +48,5 @@ if command -v update-desktop-database >/dev/null 2>&1; then
 fi
 printf 'MultiApp Showcase launcher installed: %s\n' "$desktop_file"
 printf 'Launch from the app grid, or run: gtk-launch %s\n' "$desktop_id"
+printf 'To debug launch issues, run: bash %s\n' "$launcher"
 printf 'Remove old Electron/gear pins and pin this launcher to the Dock.\n'
