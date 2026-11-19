@@ -10,6 +10,10 @@ const {calculateBounds,calculateDrawerBounds}=require('./view-layout');
 const {recordDiagnostic}=require('./diagnostics');
 const {theme:validateTheme,group:validateGroup,hidden:validateHidden,tabLayout:validateTabLayout,sidebarCollapsed:validateSidebarCollapsed,sidebarWidth:validateSidebarWidth,visibleApps,nextActiveId}=require('./config-features');
 
+// Match the installed .desktop filename so GNOME/KDE can associate the running
+// Electron process with the branded app icon instead of an unknown gear icon.
+if(process.platform==='linux')app.setDesktopName('com.rykstudio.multiappshowcase.desktop');
+
 // Only the main local UI frame may send privileged IPC requests.
 function secureHandle(channel, handler) {
   ipcMain.handle(channel,(event,...args)=>{
