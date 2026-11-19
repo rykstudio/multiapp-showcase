@@ -17,13 +17,18 @@
     active=button;
     hint.textContent=message;
     hint.hidden=false;
-    const rect=button.getBoundingClientRect();
-    const size=hint.getBoundingClientRect();
-    const toolbarAtTop=rect.top<28;
-    const top=toolbarAtTop?Math.max(2,(35-size.height)/2):Math.max(2,rect.top-size.height-3);
-    const left=toolbarAtTop?rect.left-size.width-7:rect.left+(rect.width-size.width)/2;
-    hint.style.top=Math.round(top)+'px';
-    hint.style.left=Math.max(5,Math.min(window.innerWidth-size.width-5,Math.round(left)))+'px';
+    // Never cover neighboring controls: the address field is reserved for
+    // toolbar hints, and the credential-value cell is reserved for drawer hints.
+    // These areas are trusted HTML chrome rather than the embedded native page.
+    const credential=button.closest('.secretrow')?.querySelector('code');
+    const anchor=credential||document.getElementById('address');
+    if(!anchor)return hide();
+    const rect=anchor.getBoundingClientRect();
+    if(rect.width<30||rect.height<12)return hide();
+    hint.style.width=Math.max(30,Math.floor(rect.width-8))+'px';
+    hint.style.maxWidth=Math.max(30,Math.floor(rect.width-8))+'px';
+    hint.style.top=Math.round(rect.top+(rect.height-hint.offsetHeight)/2)+'px';
+    hint.style.left=Math.round(rect.left+4)+'px';
   }
   document.addEventListener('pointerover',e=>{
     const button=e.target.closest?.('[data-tooltip]');
