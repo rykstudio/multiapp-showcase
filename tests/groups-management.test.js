@@ -102,10 +102,12 @@ test('Login drawer always displays username and password status, even without a 
   assert.ok(!renderer.includes('if(login.hasPassword)details.append'));
 });
 
-test('Immediate tooltips use non-icon address/credential area, not nearby buttons',()=>{
-  assert.ok(tips.includes("button.closest('.secretrow')?.querySelector('code')"));
-  assert.ok(tips.includes("document.getElementById('address')"));
-  assert.ok(tips.includes("hint.style.left=Math.round(rect.left+4)"));
-  assert.ok(!tips.includes('rect.left-size.width-7'));
+test('Immediate tooltips render as compact labels beneath the full toolbar, never across icons',()=>{
+  assert.ok(tips.includes("const headerRect=header.getBoundingClientRect()"));
+  assert.ok(tips.includes("Math.max(rect.bottom+margin,headerRect.bottom+margin)"));
+  assert.ok(tips.includes("hint.style.width='max-content'"));
+  assert.ok(tips.includes("hint.style.maxWidth='220px'"));
+  assert.ok(!tips.includes("document.getElementById('address')"));
+  assert.ok(!tips.includes("rect.left-size.width-7"));
   assert.ok(!tips.includes('setTimeout'));
 });
