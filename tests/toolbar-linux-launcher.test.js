@@ -52,3 +52,14 @@ test('desktop icon has matching package, GNOME launcher and Electron identities'
   assert.match(launcher,/Icon=\$icon/);
   assert.ok(fs.existsSync(path.join(root,'src/assets/zt-app-icon.png')));
 });
+
+test('Ubuntu development launcher uses npm start without a hardcoded Electron binary path',()=>{
+  const installer=fs.readFileSync(path.join(root,'scripts/install-linux-launcher.sh'),'utf8');
+  const helper=fs.readFileSync(path.join(root,'scripts/launch-linux.sh'),'utf8');
+  assert.match(installer,/Exec=\/usr\/bin\/bash "\$launcher"/);
+  assert.match(installer,/TryExec=\/usr\/bin\/bash/);
+  assert.doesNotMatch(installer,/node_modules\/electron\/dist\/electron/);
+  assert.match(helper,/exec npm start/);
+  assert.match(helper,/node_modules\/electron\/package\.json/);
+  assert.doesNotMatch(helper,/node_modules\/electron\/dist\/electron/);
+});
