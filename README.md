@@ -48,11 +48,11 @@ If Electron reports a missing downloaded binary, the npm package may have been i
 
 ## Import settings and download a template
 
-Open **Settings** and choose **Download JSON template** to save `multiapp-settings-template.json` to your computer. It includes four sample applications, two with multiple demo accounts, a mobile example, and a hidden app. Samples demonstrate groups, order and theme. Replace the example `.example.com` URLs and usernames with your own details.
+Open **Settings** and choose **Download JSON template** to save `multiapp-showcase-settings-template.json`. The updated template contains a top-level `groups` array (including an empty example group), four sample applications assigned to groups, demo accounts, a mobile example, hidden apps, theme and sidebar settings. Replace the sample URLs and usernames with your own details. Download the template again after upgrading: previously downloaded JSON files do not change automatically.
 
-Click **Import settings JSON** and select a JSON file using the same structure. If the file is an encrypted export, enter its export password to decrypt it before previewing. The app validates the format, application IDs, URLs, demo-login IDs and field lengths, then shows a **preview**. The imported apps replace the current **draft** settings, not your saved configuration. Review them and click **Save changes** to apply or **Cancel** to discard.
+Click **Import JSON (plain or encrypted)** and select either an editable plain JSON file in this structure or a password-protected encrypted JSON export. If the file is an encrypted export, enter its export password to decrypt it before previewing. The app validates the format, application IDs, URLs, demo-login IDs and field lengths, then shows a **preview**. The imported apps replace the current **draft** settings, not your saved configuration. Review them and click **Save changes** to apply or **Cancel** to discard.
 
-The JSON includes global `tabLayout` (`horizontal` or `vertical`), `sidebarCollapsed` (`true` or `false`), and `sidebarWidth` (180 to 420 pixels), as well as global `theme` (`auto`, `light`, `dark`) and, for every application, `group`, `hidden`, `displayMode` and optionally `order`. `group` is a case-sensitive label up to 64 characters. Set `hidden: true` to remove the app from tabs without deleting its saved configuration or browser session. If `order` is used, provide a distinct nonnegative index on every app; otherwise array order applies. Collapsed and expanded editor sections are temporary interface state and are intentionally not exported.
+The JSON includes a top-level `groups` array of explicitly named groups (up to 40, with distinct nonempty names up to 64 characters), global `tabLayout` (`horizontal` or `vertical`), `sidebarCollapsed` (`true` or `false`), and `sidebarWidth` (180 to 420 pixels), as well as global `theme` (`auto`, `light`, `dark`) and, for every application, a `group` reference, `hidden`, `displayMode` and optionally `order`. Older imports without `groups` are supported: group names are derived from the apps. `group` is a case-sensitive label up to 64 characters. Set `hidden: true` to remove the app from tabs without deleting its saved configuration or browser session. If `order` is used, provide a distinct nonnegative index on every app; otherwise array order applies. Collapsed and expanded editor sections are temporary interface state and are intentionally not exported.
 
 For each demo login, use `id`, `title`, `description`, `username` and optional `password`. Empty imported passwords preserve an existing encrypted password when the app and login IDs match. Real passwords in an import JSON are stored in plaintext until imported, so protect the file and delete it securely if needed. Internally encrypted passwords cannot be imported between machines; configure them through the UI or using an import file with a plaintext password on the destination computer.
 
@@ -85,6 +85,14 @@ The choice is saved in the embedded SQLite `applications.display_mode` column an
 
 The horizontal tabs occupy the full top strip. The address/navigation row contains aligned SVG buttons for switching horizontal/vertical tabs, toggling full screen, opening Settings, and opening the icon-only **Mobile Preview** action when applicable. All controls have accessible labels and immediate hover tooltips rendered in application chrome instead of relying on delayed operating-system `title` hints.
 
+### Encrypted export accordion
+
+**Export settings (encrypted JSON)** is a collapsed accordion by default under Settings. Expand it only when exporting, choose and confirm a password, and save the encrypted settings file. Closing it clears the passphrase fields. Import supports both this encrypted export and unencrypted JSON; plain JSON containing real demo passwords must be handled securely.
+
+### Immediate tooltips
+
+Icon hover descriptions appear immediately **inside the address display area** (or inside a credential's value cell in the login drawer) so they never obscure neighboring action icons. The tooltip's full meaning is always available to keyboard and screen-reader users via the button's accessible label.
+
 ## Horizontal and vertical application tabs
 
 MultiApp Showcase supports two layouts, both selectable from the toolbar or Settings. The selected layout is saved in SQLite and included in JSON import/export.
@@ -97,7 +105,7 @@ MultiApp Showcase supports two layouts, both selectable from the toolbar or Sett
 
 **Appearance:** In **Settings**, choose **Auto (system)**, **Light**, or **Dark**. The desktop browser chrome follows that setting; Auto follows the operating system. Embedded websites receive the corresponding native Chromium colour-scheme preference but may retain their own theme controls.
 
-**Grouping:** Assign the same optional group name to related applications, such as Operations, Sales or Personal. When two or more groups are present among visible applications, the tab bar gains a group selector. Choose a group to see only its apps; the all-apps view and searchable tab picker remain available. Group names are editable per application and are preserved in SQLite and JSON import/export.
+**Grouping:** Open **Settings > Groups** to create, rename or delete named groups independently of applications, including empty groups. Then expand an application in **Settings > Applications**, choose one of the saved groups from its **Group** dropdown (or select Ungrouped), and click **Save changes**. Renaming a group updates its applications; deleting a group keeps the applications but makes them ungrouped. When two or more groups are present among visible applications, tab navigation provides a group filter. The separate `groups` list and app assignments persist in SQLite and both plain/encrypted JSON files.
 
 **Hide versus delete:** The **Hide / Show** control is available directly on each application accordion header, even when collapsed. Hidden applications remain in Settings with their IDs, URLs, demo accounts and browser partitions intact. They are excluded from tab navigation and group filtering; unhiding restores access. **Delete** remains a separate action inside the expanded application panel and removes the entry from saved configuration.
 
@@ -123,7 +131,7 @@ Under each website, use **+ Add demo login** to add as many as 50 demo accounts 
 
 The login drawer stays visible on the right while the active website remains visible on the left. This avoids the previously blank website caused by detaching Electron's native web view. The drawer adjusts to the available window width, including when a vertical tab sidebar is open.
 
-Each username and saved password has **Copy** and **Paste** icons. **Copy** places the credential on the operating system clipboard. **Paste** is different: click the intended editable input in the visible website, then click Paste alongside the corresponding credential. MultiApp Showcase inserts that value directly into the currently focused page element through Electron; it never returns the secret to the chrome renderer or changes the clipboard. Pasting fails safely if there is no selected editable field. Some websites that put login fields inside inaccessible or third-party frames may require using Copy instead.
+The login drawer always shows both **Username** and **Password** rows. If an account has no saved password, it displays **No password saved** with disabled actions; add the password through its account editor in Settings. Each configured username and saved password has **Copy** and **Paste** icons. **Copy** places the credential on the operating system clipboard. **Paste** is different: click the intended editable input in the visible website, then click Paste alongside the corresponding credential. MultiApp Showcase inserts that value directly into the currently focused page element through Electron; it never returns the secret to the chrome renderer or changes the clipboard. Pasting fails safely if there is no selected editable field. Some websites that put login fields inside inaccessible or third-party frames may require using Copy instead.
 
 ## Managing applications
 
