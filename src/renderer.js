@@ -571,7 +571,7 @@ $('saveSettings').onclick=async()=>{
 function copyIconButton(loginId,field){
   const label=field==='username'?'Copy username':'Copy password';
   const control=button('',()=>copyField(loginId,field),'copyIconButton');
-  control.title=label;
+  control.dataset.tooltip=label;
   control.setAttribute('aria-label',label);
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('viewBox','0 0 24 24');
