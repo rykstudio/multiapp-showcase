@@ -80,24 +80,44 @@ function toast(message) {
   const node=$('toast');node.textContent=message;node.hidden=false;
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>node.hidden=true,3500);
 }
+function drawerChromeWidth(data=current){
+  const viewport=Math.max(1,window.innerWidth);
+  const sidebar=data.tabLayout==='vertical'?(data.sidebarCollapsed?56:Math.max(180,Math.min(420,data.sidebarWidth||280))):0;
+  const available=Math.max(1,viewport-sidebar);
+  const reserved=Math.max(120,Math.floor(available/2));
+  return Math.max(0,Math.min(440,Math.round(available*.48),available-reserved));
+}
+function updateDrawerChromeLayout(data=current){
+  document.documentElement.style.setProperty('--drawer-width',drawerChromeWidth(data)+'px');
+  document.documentElement.dataset.drawerOpen=String(drawerOpen);
+}
+function drawerFeedback(message='',isError=false){
+  const element=$('drawerFeedback');
+  element.hidden=!message;
+  element.textContent=message;
+  element.className=isError?'drawerFeedback error':'drawerFeedback';
+}
+window.addEventListener('resize',()=>updateDrawerChromeLayout());
 function render(data) {
   const prevActive=current.activeId;current=data;
+  updateDrawerChromeLayout(data);
   document.documentElement.dataset.theme=data.resolvedTheme==='dark'?'dark':'light';
   if(data.activeId && prevActive!==data.activeId && tabGroupFilter!=='all' && !visibleTabApps(data).some(a=>a.id===data.activeId))tabGroupFilter='all';
   updateGroupSelector(data);
   $('error').textContent=data.error||'';
-  $('fullscreenButton').textContent='⛶';
-  $('fullscreenButton').title=data.fullScreen ? 'Exit full screen (F11)' : 'Enter full screen (F11)';
-  $('fullscreenButton').setAttribute('aria-label',$('fullscreenButton').title);
+  // Keep inline SVG icons mounted while updating accessible descriptions.
+  $('fullscreenButton').dataset.tooltip=data.fullScreen?'Exit full screen (F11)':'Enter full screen (F11)';
+  $('fullscreenButton').setAttribute('aria-label',$('fullscreenButton').dataset.tooltip);
   $('maximizeButton').textContent=data.maximized?'❐':'□';
-  $('maximizeButton').title=data.maximized?'Restore window':'Maximize window';
+  $('maximizeButton').dataset.tooltip=data.maximized?'Restore window':'Maximize window';
+  $('maximizeButton').setAttribute('aria-label',$('maximizeButton').dataset.tooltip);
   $('settings').hidden=!data.settingsVisible;
   const activeApp=data.apps.find(a=>a.id===data.activeId);
   $('mobileStage').hidden=data.settingsVisible||(activeApp?.displayMode!=='mobile'&&!activeApp?.previewMobile);
   $('responsivePreview').hidden=data.settingsVisible||!activeApp||activeApp.displayMode==='mobile';
-  $('responsivePreview').textContent=activeApp?.previewMobile?'▣ Desktop view':'▯ Mobile preview';
   $('responsivePreview').setAttribute('aria-pressed',String(!!activeApp?.previewMobile));
-  $('responsivePreview').title=activeApp?.previewMobile?'Return to full-width desktop view':'Preview this Desktop website at mobile width without saving the change';
+  $('responsivePreview').dataset.tooltip=activeApp?.previewMobile?'Desktop View':'Mobile Preview';
+  $('responsivePreview').setAttribute('aria-label',$('responsivePreview').dataset.tooltip);
   const shownApps=visibleTabApps(data);
   window.verticalTabs.render(data,shownApps);
   const tabIds=shownApps.map(a=>a.id).join('\u0000');
@@ -131,7 +151,7 @@ function render(data) {
   $('closeSignIn').hidden=!active?.popupActive || data.settingsVisible;
   const pageTitle=(active?.popupTitle||'Page').trim();
   $('closeSignIn').textContent='✕ Close '+(pageTitle.length>36?pageTitle.slice(0,33)+'…':pageTitle);
-  $('closeSignIn').title='Close '+pageTitle+' and return to '+(active?.name||'the application');
+  $('closeSignIn').dataset.tooltip='Close '+pageTitle+' and return to '+(active?.name||'the application');
   $('closeSignIn').setAttribute('aria-label','Close '+pageTitle);
   $('empty').hidden=data.apps.some(a=>!a.hidden)||data.settingsVisible;
   if(!active?.loginCount||prevActive!==data.activeId||data.settingsVisible)closeDrawer(false);
@@ -564,6 +584,35 @@ function copyIconButton(loginId,field){
   control.append(svg);
   return control;
 }
+function pasteIconButton(loginId,field){
+  const label=field==='username'?'Paste username':'Paste password';
+  const control=button('',()=>pasteField(loginId,field),'pasteIconButton');
+  control.dataset.tooltip=label+' into selected website field';
+  control.setAttribute('aria-label',label);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 24 24');
+  svg.setAttribute('aria-hidden','true');
+  for(const d of [
+    'M8 4h-2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2',
+    'M9 2h6a1 1 0 0 1 1 1v3H8V3a1 1 0 0 1 1-1z',
+    'M12 10v8m-3-3 3 3 3-3'
+  ]){
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',d);
+    svg.append(path);
+  }
+  control.append(svg);
+  return control;
+}
+async function pasteField(loginId,field){
+  try {
+    const result=await window.multiApp.pasteLogin(current.activeId,loginId,field);
+    if(!result?.ok)throw new Error('Could not paste into the active website');
+    drawerFeedback((field==='username'?'Username':'Password')+' pasted into the selected field.');
+  }catch(err){
+    drawerFeedback('Paste failed: '+err.message,true);
+  }
+}
 async function openDrawer(){
   if(pickerOpen)await closeTabPicker();
   if(!current.activeId||!current.apps.find(a=>a.id===current.activeId)?.loginCount)return;
@@ -574,8 +623,11 @@ async function openDrawer(){
       initializedDrawerApps.add(current.activeId);
       expandedDrawerLoginIds.add(loginKey(current.activeId,demoEntries[0].id));
     }
-    await window.multiApp.setDrawer(true);
-    drawerOpen=true;$('drawer').hidden=false;$('drawerTitle').textContent='Demo logins';
+    const shown=await window.multiApp.setDrawer(true);
+    if(!shown?.ok)throw new Error('Could not open the login drawer');
+    drawerOpen=true;updateDrawerChromeLayout();
+    $('drawer').hidden=false;$('drawerTitle').textContent='Demo logins';
+    drawerFeedback('Click a username or password field in the visible website, then use Paste.');
     $('loginCards').replaceChildren();
     for(const login of demoEntries){
       const card=el('details',{class:'loginCard'});
@@ -590,12 +642,14 @@ async function openDrawer(){
         el('p',{text:login.description}),
         el('div',{class:'secretrow'},[
           el('code',{text:login.username||'No username'}),
-          copyIconButton(login.id,'username')
+          copyIconButton(login.id,'username'),
+          pasteIconButton(login.id,'username')
         ])
       ]);
       if(login.hasPassword)details.append(el('div',{class:'secretrow'},[
         el('code',{text:'••••••••'}),
-        copyIconButton(login.id,'password')
+        copyIconButton(login.id,'password'),
+        pasteIconButton(login.id,'password')
       ]));
       card.append(details);
       $('loginCards').append(card);
@@ -609,6 +663,8 @@ async function copyField(loginId,field){
 async function closeDrawer(notify=true){
   if(!drawerOpen)return;
   drawerOpen=false;$('drawer').hidden=true;
+  updateDrawerChromeLayout();
+  drawerFeedback();
   if(notify)try{await window.multiApp.setDrawer(false);}catch(err){toast(err.message);}
   else window.multiApp.setDrawer(false).catch(()=>{});
 }
