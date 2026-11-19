@@ -126,7 +126,7 @@ html[data-theme="dark"] #phoneFrame{background:#0b1017}
 #browserTools button,#windowControls button{flex:0 0 auto;display:grid;place-items:center;width:28px;height:28px;padding:0;font-size:16px;white-space:nowrap}
 #windowControls button{width:27px;font-size:14px}
 #error{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#tabPicker{right:8px}
+#tabPicker{right:110px}
 html[data-theme="dark"] #browserTools,html[data-theme="dark"] #windowControls{border-color:#31465e}
 @media(max-width:1050px){
   #toolbar{gap:2px;padding:3px 5px}
@@ -274,6 +274,24 @@ html[data-theme="dark"] .groupManagerCount{color:#b1c1d1}
 .credentialField.isMissing .secretrow code{color:#8692a3;font-style:italic}
 .credentialField .secretrow button:disabled{opacity:.35;cursor:not-allowed}
 html[data-theme="dark"] .credentialLabel{color:#bed0e3}
+/* Window controls belong to the top tab strip in horizontal layout. In
+   vertical layout, the same controls are reparented into the toolbar. */
+#toprow>#windowControls{height:36px;display:flex;align-items:center;gap:2px;flex:0 0 auto;
+  padding:0 5px;border-left:1px solid #dfe5ee;-webkit-app-region:no-drag}
+#toprow #tabStrip{flex:1 1 auto;min-width:0;width:auto}
+#windowControls button{width:32px;height:29px;min-width:32px;padding:0;display:inline-flex;
+  align-items:center;justify-content:center;font-size:14px;-webkit-app-region:no-drag}
+#windowControls #closeButton:hover{color:#fff;background:#b02a3c}
+#toolbar>#windowControls{display:flex;gap:2px;align-items:center;flex:0 0 auto;height:29px}
+html[data-theme="dark"] #toprow>#windowControls{border-color:#34475d}
+#responsivePreview .toolbarGlyph[hidden]{display:none!important}
+#browserTools>#responsivePreview .toolbarGlyph{width:17px;height:17px}
+/* A compact floating caption below the toolbar, never across the address field
+   or on top of neighboring icon buttons. */
+#instantTooltip{box-sizing:border-box;width:max-content;max-width:220px!important;
+  padding:5px 9px!important;min-height:23px;border-radius:6px!important;
+  font:500 11px/1.25 system-ui,-apple-system,'Segoe UI',sans-serif!important;
+  box-shadow:0 5px 14px rgba(0,0,0,.22)!important}
 </style></head><body>
 <header>
 <div id="toprow">
@@ -284,8 +302,13 @@ html[data-theme="dark"] .credentialLabel{color:#bed0e3}
     <button class="tabNav" id="tabRight" hidden aria-label="Scroll tabs right" title="Next tabs">›</button>
     <button class="tabNav" id="tabPickerButton" hidden aria-label="Search and switch tabs" title="All tabs">▾</button>
   </div>
+<div id="windowControls" role="group" aria-label="Window controls">
+    <button id="minimizeButton" data-tooltip="Minimize window" aria-label="Minimize window">─</button>
+    <button id="maximizeButton" data-tooltip="Maximize window" aria-label="Maximize window">□</button>
+    <button id="closeButton" data-tooltip="Close window" aria-label="Close window">✕</button>
+  </div>
 </div>
-<div id="toolbar" aria-label="Navigation and window controls">
+<div id="toolbar" aria-label="Navigation and application tools">
   <button id="back" data-tooltip="Back" aria-label="Back">◀</button>
   <button id="forward" data-tooltip="Forward" aria-label="Forward">▶</button>
   <button id="reload" data-tooltip="Reload" aria-label="Reload">↻</button>
@@ -294,17 +317,12 @@ html[data-theme="dark"] .credentialLabel{color:#bed0e3}
   <div id="browserTools" role="group" aria-label="Browser and application options">
     <button type="button" class="iconTool" id="tabLayoutToggle" data-tooltip="Switch to vertical tabs" aria-label="Switch to vertical tabs"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></button>
     <button type="button" class="iconTool" id="fullscreenButton" data-tooltip="Enter full screen (F11)" aria-label="Enter full screen (F11)"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg></button>
-    <button type="button" class="iconTool" id="settingsButton" data-tooltip="Settings" aria-label="Settings"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.07.07-1.76 1.76-.07-.07a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.66V21h-2.5v-.94a1.8 1.8 0 0 0-1.1-1.66 1.8 1.8 0 0 0-2 .36l-.07.07-1.76-1.76.07-.07A1.8 1.8 0 0 0 7.9 15a1.8 1.8 0 0 0-1.66-1.1H5.3v-2.5h.94A1.8 1.8 0 0 0 7.9 10.3a1.8 1.8 0 0 0-.36-2l-.07-.07 1.76-1.76.07.07a1.8 1.8 0 0 0 2 .36A1.8 1.8 0 0 0 12.4 5.24V4.3h2.5v.94A1.8 1.8 0 0 0 16 6.9a1.8 1.8 0 0 0 2-.36l.07-.07 1.76 1.76-.07.07a1.8 1.8 0 0 0-.36 2 1.8 1.8 0 0 0 1.66 1.1H22v2.5h-.94A1.8 1.8 0 0 0 19.4 15z" transform="translate(-1.65 -1.65) scale(1.13)"/></svg></button>
-    <button type="button" class="iconTool" id="responsivePreview" hidden aria-pressed="false" data-tooltip="Mobile Preview" aria-label="Mobile Preview"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></svg></button>
+    <button type="button" class="iconTool" id="settingsButton" data-tooltip="Settings" aria-label="Settings"><svg class="toolbarGlyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9.20 4.29 L10.16 4.01 L10.02 1.79 L13.98 1.79 L13.84 4.01 L14.80 4.29 L15.47 4.57 L16.35 5.05 L17.82 3.38 L20.62 6.18 L18.95 7.65 L19.43 8.53 L19.71 9.20 L19.99 10.16 L22.21 10.02 L22.21 13.98 L19.99 13.84 L19.71 14.80 L19.43 15.47 L18.95 16.35 L20.62 17.82 L17.82 20.62 L16.35 18.95 L15.47 19.43 L14.80 19.71 L13.84 19.99 L13.98 22.21 L10.02 22.21 L10.16 19.99 L9.20 19.71 L8.53 19.43 L7.65 18.95 L6.18 20.62 L3.38 17.82 L5.05 16.35 L4.57 15.47 L4.29 14.80 L4.01 13.84 L1.79 13.98 L1.79 10.02 L4.01 10.16 L4.29 9.20 L4.57 8.53 L5.05 7.65 L3.38 6.18 L6.18 3.38 L7.65 5.05 L8.53 4.57 Z"/><circle cx="12" cy="12" r="2.8"/></svg></button>
+    <button type="button" class="iconTool" id="responsivePreview" hidden aria-pressed="false" data-tooltip="Mobile Preview" aria-label="Mobile Preview"><svg class="toolbarGlyph" data-preview-icon="mobile" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></svg><svg class="toolbarGlyph" data-preview-icon="desktop" viewBox="0 0 24 24" aria-hidden="true" focusable="false" hidden><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
   </div>
   <button id="closeSignIn" hidden data-tooltip="Close embedded page and return to application">✕ Close Page</button>
   <span id="error" role="status"></span>
   <button id="loginMenu" hidden data-tooltip="Demo logins" aria-label="Open demo logins">☰ Logins</button>
-  <div id="windowControls" role="group" aria-label="Window controls">
-    <button id="minimizeButton" data-tooltip="Minimize window" aria-label="Minimize window">─</button>
-    <button id="maximizeButton" data-tooltip="Maximize window" aria-label="Maximize window">□</button>
-    <button id="closeButton" data-tooltip="Close window" aria-label="Close window">✕</button>
-  </div>
 </div>
 <div id="instantTooltip" role="tooltip" hidden></div>
 </header>
