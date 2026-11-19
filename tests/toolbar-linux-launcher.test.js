@@ -29,7 +29,9 @@ test('dynamic state never overwrites inline SVG icons with textContent',()=>{
   assert.doesNotMatch(renderer,/\$\('fullscreenButton'\)\.textContent/);
   assert.doesNotMatch(renderer,/\$\('responsivePreview'\)\.textContent/);
   assert.doesNotMatch(vertical,/\$\('tabLayoutToggle'\)\.textContent/);
-  assert.match(renderer,/\$\('responsivePreview'\)\.dataset\.tooltip=activeApp\?\.previewMobile/);
+  assert.match(renderer,/previewButton\.dataset\.tooltip=previewOn\?'Desktop View':'Mobile Preview'/);
+  assert.match(renderer,/previewButton\.querySelector\('\[data-preview-icon="mobile"\]'\)\.hidden=previewOn/);
+  assert.match(renderer,/previewButton\.querySelector\('\[data-preview-icon="desktop"\]'\)\.hidden=!previewOn/);
   assert.match(vertical,/\$\('tabLayoutToggle'\)\.dataset\.tooltip/);
 });
 
@@ -62,4 +64,16 @@ test('Ubuntu development launcher uses npm start without a hardcoded Electron bi
   assert.match(helper,/exec npm start/);
   assert.match(helper,/node_modules\/electron\/package\.json/);
   assert.doesNotMatch(helper,/node_modules\/electron\/dist\/electron/);
+});
+
+test('mobile preview keeps paired SVG icons and uses a centered gear without an offset transform',()=>{
+  const toolbar=html.slice(html.indexOf('<div id="browserTools"'),html.indexOf('<button id="closeSignIn"'));
+  const settings=toolbar.slice(toolbar.indexOf('id="settingsButton"'),toolbar.indexOf('id="responsivePreview"'));
+  assert.match(settings,/<circle cx="12" cy="12" r="2\.8"\/>/);
+  assert.doesNotMatch(settings,/transform=/);
+  assert.match(toolbar,/data-preview-icon="mobile"/);
+  assert.match(toolbar,/data-preview-icon="desktop"/);
+  assert.match(html,/#responsivePreview \.toolbarGlyph\[hidden\]\{display:none!important\}/);
+  assert.match(html,/#toprow>#windowControls\{/);
+  assert.match(html,/#windowControls #closeButton:hover\{/);
 });
