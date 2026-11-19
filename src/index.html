@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self';">
+<title>MultiApp Showcase</title>
+<style>
+:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#182538;background:#fff}*{box-sizing:border-box}
+body{margin:0;font-size:13px}header{height:71px;background:#f7f9fc;border-bottom:1px solid #dfe5ee}
+#toprow{height:36px;display:flex;align-items:stretch;min-width:0;border-bottom:1px solid #dfe5ee;-webkit-app-region:drag}#topActions{display:flex;align-items:center;flex:0 0 auto;padding:0 8px;gap:3px;-webkit-app-region:no-drag}#topActions button{white-space:nowrap;font-size:12px}
+#tabStrip{height:36px;display:flex;flex:1;min-width:0;align-items:center;-webkit-app-region:no-drag}#tabViewport{height:36px;flex:1;min-width:0;overflow:hidden;position:relative}#tabs{height:36px;display:flex;gap:4px;align-items:end;padding:0 7px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth}#tabs::-webkit-scrollbar{display:none}.tabNav{flex:0 0 28px;width:28px;height:28px;padding:0;border:1px solid #dce3ed;background:#f5f8fc;color:#50637b;border-radius:7px;font-size:19px;line-height:1;-webkit-app-region:no-drag}.tabNav:hover:not(:disabled){background:#e6edf8;color:#174f9d}.tabNav:disabled{opacity:.28}.tabNav[hidden]{display:none}#tabPickerButton{font-size:13px;min-width:37px;width:auto;padding:0 7px;font-weight:650}#tabPickerButton[hidden]{display:none}
+.tab{-webkit-app-region:no-drag;flex:0 0 auto;width:clamp(116px,11vw,180px);min-width:116px;height:31px;border:1px solid #dce3ed;border-bottom:0;background:#eaf0f7;border-radius:8px 8px 0 0;padding:7px 11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;font-size:12px;transition:background .13s,color .13s}.tab:hover:not(.active){background:#dce6f3}.tab:focus-visible,.tabNav:focus-visible{outline:2px solid #477dca;outline-offset:-2px}
+.tab.active{background:#fff;color:#125ac0;font-weight:650;box-shadow:inset 0 2px #2563b8}.tab.loading:before{content:'◌ ';color:#2563eb}
+#toolbar{height:35px;display:flex;align-items:center;gap:6px;padding:3px 10px;border-top:1px solid #e4eaf0}
+button{font:inherit;border:0;background:transparent;border-radius:6px;padding:6px 9px;cursor:pointer;color:#344456}
+button:hover{background:#e3ebf7}button:disabled{opacity:.35;cursor:default}
+#address{flex:1;min-width:0;border:1px solid #e1e7ee;border-radius:7px;background:white;font-size:12px;color:#506076;padding:6px 9px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#error{color:#ad263b;font-size:11px;font-weight:400}
+.primary{background:#205ab6;color:white}.primary:hover{background:#16479a}.secondary{background:#edf3fc}
+#drawer{position:absolute;top:71px;right:0;bottom:0;box-sizing:border-box;width:min(440px,calc(100vw - 16px));max-width:100vw;background:#fff;border-left:1px solid #dbe4f1;box-shadow:-4px 0 16px #10234024;z-index:5;overflow-y:auto;overflow-x:hidden;min-width:0}
+#drawer[hidden],#settings[hidden],#loginMenu[hidden],#empty[hidden],#closeSignIn[hidden],#responsivePreview[hidden]{display:none}
+.drawerhead{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;border-bottom:1px solid #e4e8f0}.drawerhead strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.drawerhead button{flex:0 0 auto}
+#loginCards{padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0;max-width:100%}.loginCard{box-sizing:border-box;min-width:0;max-width:100%;border:1px solid #dce4ed;border-radius:10px;padding:12px;background:#fff}.loginCard[open]{border-color:#c3d5ed}.loginCard>summary{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;cursor:pointer;list-style:none;min-height:24px;font-weight:650}.loginCard>summary::-webkit-details-marker{display:none}.loginCard>summary:before{content:'›';font-size:20px;line-height:1;color:#64748b;transition:transform .15s}.loginCard[open]>summary:before{transform:rotate(90deg)}.loginCard>summary:focus-visible{outline:2px solid #2563eb;border-radius:5px}.loginCardContent{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;max-width:100%;gap:9px;padding-top:12px}.loginCard h3{margin:0;font-size:14px}.loginCard p{margin:0;color:#65758b;white-space:pre-wrap;overflow-wrap:anywhere}
+.secretrow{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:center;gap:8px;min-width:0;max-width:100%;overflow:hidden}.copyIconButton{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border:1px solid #dce4ed;background:#f7f9fc;border-radius:7px;padding:0;color:#4b5e73}.copyIconButton:hover{background:#e9f2fc;color:#1558a9}.copyIconButton svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.secretrow code{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#f6f8fb;padding:8px;border-radius:6px}
+#settings{position:absolute;top:71px;left:0;right:0;bottom:0;background:#fff;overflow:auto;z-index:4;padding:24px max(28px,calc((100vw - 1080px)/2))}
+.settingshead{display:flex;align-items:center;justify-content:space-between;gap:15px;position:sticky;top:-24px;background:white;padding:10px 0 14px;z-index:2;border-bottom:1px solid #e5eaf0}
+h1{font-size:23px;margin:0}h2{font-size:16px;margin:18px 0 9px}h3{font-size:14px}
+.note{color:#607083;line-height:1.5}.danger{color:#a82d40}.notice{margin:12px 0;padding:11px;background:#f2f5fa;border-radius:7px}
+#appEditor{display:grid;gap:12px;margin:16px 0 40px}.settingsTools{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.settingsTools h2{margin:18px 0 8px}.settingsTools .actions button{font-size:12px}.appContent{display:grid;gap:12px;padding-top:12px}.loginContent{display:grid;gap:10px;padding-top:10px}.appEditor>summary,.loginEditor>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;font-weight:650;min-height:28px;user-select:none}.appEditor>summary::-webkit-details-marker,.loginEditor>summary::-webkit-details-marker{display:none}.appEditor>summary:before,.loginEditor>summary:before{content:'›';display:inline-block;flex:0 0 12px;font-size:21px;color:#66788f;transition:transform .15s ease}.appEditor[open]>summary:before,.loginEditor[open]>summary:before{transform:rotate(90deg)}.appEditor>summary:focus-visible,.loginEditor>summary:focus-visible{outline:2px solid #2563eb;border-radius:5px}.summaryTitle{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.summaryMeta{flex:0 0 auto;color:#64748b;font-size:11px;font-weight:400}
+.appEditor{border:1px solid #dce4ed;border-radius:12px;padding:13px 16px;background:#fff}.appEditor[open]{border-color:#c5d5e9;box-shadow:0 2px 10px rgba(30,58,100,.035)}
+.editHead{display:flex;align-items:center;gap:8px}.editHead strong{flex:1}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{display:grid;gap:5px;color:#3d4c60;font-size:12px}.field input,.field textarea{width:100%;font:inherit;border:1px solid #ccd7e6;border-radius:7px;padding:9px;color:#182538;background:white}.field textarea{resize:vertical;min-height:55px}
+.loginEditor{border:1px solid #e4e9f0;border-radius:9px;padding:10px 12px;background:#f9fbfd}.loginEditor[open]{background:#fff}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{border:1px solid #d8e0ed}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#172a44;color:white;border-radius:7px;padding:10px 16px;z-index:10}
+#toast[hidden],#importPreview[hidden],#unlockImport[hidden],#tabPicker[hidden]{display:none}#tabPicker{position:absolute;z-index:7;top:37px;right:110px;width:min(360px,calc(100vw - 32px));max-height:min(520px,calc(100vh - 125px));background:#fff;border:1px solid #dce4f0;border-radius:12px;box-shadow:0 10px 34px #12283f33;overflow:hidden;display:flex;flex-direction:column}#tabPickerHeader{padding:12px;border-bottom:1px solid #e4eaf2}#tabPickerSearch{width:100%;height:36px;border:1px solid #d6e0ed;border-radius:8px;padding:8px 11px;font:inherit;outline-offset:2px}#tabPickerItems{overflow:auto;padding:5px;min-height:45px}#tabPickerItems button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:10px;border-radius:8px}#tabPickerItems button.selected{background:#eef4fd;color:#125ac0;font-weight:650}.tabPickName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tabPickNum{color:#718096;font-size:11px}#tabPickerEmpty{padding:18px;color:#697a91;text-align:center}
+#empty{padding:36px;color:#65758b}#mobileStage{position:absolute;inset:71px 0 0;background:radial-gradient(ellipse at 50% 22%,#e9edf3 0%,#f6f7fa 65%,#f0f3f7 100%);display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden}
+#mobileStage[hidden]{display:none}
+#phoneFrame{position:relative;box-sizing:border-box;width:min(440px,calc(100% - 48px));height:min(890px,calc(100% - 36px));border:8px solid #414550;border-radius:49px;background:#121318;box-shadow:0 22px 55px rgba(22,32,52,.22),0 6px 16px rgba(22,32,52,.12),inset 0 0 0 1px rgba(255,255,255,.15);overflow:hidden}
+#phoneFrame:before{content:'';position:absolute;inset:46px 4px 12px;border-radius:30px 30px 28px 28px;background:#fff}
+#dynamicIsland{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:122px;height:31px;border-radius:999px;background:#050609;z-index:2;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+#dynamicIsland:after{content:'';position:absolute;width:7px;height:7px;border-radius:50%;right:12px;top:12px;background:#141c2c;box-shadow:inset 0 0 2px #28405d}
+#homeIndicator{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:122px;height:4px;border-radius:999px;background:#89919a;z-index:2}
+.field select{width:100%;font:inherit;border:1px solid #ccd7e6;border-radius:7px;padding:9px;color:#182538;background:#fff}
+
+/* Application organization and keyboard-accessible ordering */
+#groupFilter{max-width:158px;flex:0 1 158px;min-width:84px;height:27px;margin:2px 4px;border:1px solid #cdd8e7;border-radius:7px;background:#fff;color:#33445b;font-size:11px;padding:0 7px;-webkit-app-region:no-drag}
+#groupFilter[hidden]{display:none}
+.summaryActions{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.summaryActions button{padding:4px 6px;border:1px solid #dbe3ed;line-height:1.2;font-size:12px;min-width:27px}
+.summaryActions button:disabled{opacity:.28}
+.dragGrip{cursor:grab;touch-action:none;color:#8191a4;border-radius:5px;font-size:18px;line-height:1;padding:5px 5px;display:inline-flex;align-items:center;justify-content:center}
+.dragGrip:active{cursor:grabbing}
+.dragGrip:focus-visible{outline:2px solid #2563eb}
+.appEditor.dragTarget{border-color:#3b82f6;box-shadow:0 0 0 2px #3b82f63a}
+.appEditor.isHidden{opacity:.76}
+.visibilityToggle{font-size:11px!important;min-width:58px!important;padding:5px 7px!important}
+.visibilityToggle.isHidden{background:#e6edf7;color:#334966}
+.appContent>.settingsTools h3{margin:6px 0}
+.loginList{display:grid;gap:7px;margin:0 0 2px 8px;padding-left:14px;border-left:2px solid #dce6f5;min-width:0}
+.loginEditor{border:1px solid #e3eaf3;background:#f8fafc;border-radius:8px}
+.loginEditor>summary{padding:2px 0;gap:7px}
+.loginEditor[open]{border-color:#cbd8e9;background:#fff}
+.loginEditor .loginContent{margin-top:10px;padding:11px 10px;border-top:1px solid #e6edf5;background:#fbfcfe;border-radius:0 0 6px 6px}
+.loginStatus{font-size:10px;font-weight:500;color:#526b88;border-radius:5px;padding:3px 6px;background:#eaf0f8;white-space:nowrap}
+.loginEditor>summary .summaryMeta,.loginCard>summary .summaryMeta{min-width:0;max-width:32%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.loginEditor>summary .loginStatus{flex:0 0 auto}.loginList .loginEditor{min-width:0;max-width:100%}
+#appEditor>.appEditor>summary .summaryTitle{font-size:13px}
+@media(max-width:850px){.summaryMeta{display:none}.summaryActions button{padding:4px 5px}.preferencesRow{grid-template-columns:1fr}}
+/* Theme applies to the application chrome, not untrusted website CSS. */
+html[data-theme="dark"]{color-scheme:dark;background:#0c131e;color:#e8eef8}
+html[data-theme="dark"] body{background:#0c131e;color:#e8eef8}
+html[data-theme="dark"] header,
+html[data-theme="dark"] #toprow,
+html[data-theme="dark"] #toolbar{background:#131d2a;border-color:#29394a;color:#e3ebf7}
+html[data-theme="dark"] #tabs .tab{background:#263448;border-color:#34475d;color:#c7d6e8}
+html[data-theme="dark"] #tabs .tab.active{background:#0c131e;color:#a8cdff}
+html[data-theme="dark"] button{color:#d8e4f4}
+html[data-theme="dark"] button:hover{background:#2c415b}
+html[data-theme="dark"] button:disabled{color:#8191a3}
+html[data-theme="dark"] #address,
+html[data-theme="dark"] #groupFilter,
+html[data-theme="dark"] #settings,
+html[data-theme="dark"] #drawer,
+html[data-theme="dark"] #tabPicker,
+html[data-theme="dark"] .appEditor,
+html[data-theme="dark"] .loginEditor,
+html[data-theme="dark"] .loginCard,
+html[data-theme="dark"] .settingshead,
+html[data-theme="dark"] .loginCardContent,
+html[data-theme="dark"] .loginEditor .loginContent{background:#141f2e;color:#e3eaf5;border-color:#334559}
+html[data-theme="dark"] #settings .field,
+html[data-theme="dark"] #settings .note,
+html[data-theme="dark"] .summaryMeta,
+html[data-theme="dark"] .loginCard p{color:#adbed0}
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] .field textarea,
+html[data-theme="dark"] #tabPickerSearch{background:#101927;color:#f0f5fc;border-color:#3b5067}
+html[data-theme="dark"] .notice,
+html[data-theme="dark"] .loginStatus,
+html[data-theme="dark"] .secretrow code{background:#26364a;color:#dbe5f4}
+html[data-theme="dark"] .secondary,
+html[data-theme="dark"] .tabNav,
+html[data-theme="dark"] .copyIconButton{background:#25384d;color:#d7e5f7;border-color:#3d526a}
+html[data-theme="dark"] .primary{background:#3169b7;color:#fff}
+html[data-theme="dark"] .loginList{border-color:#3c526c}
+html[data-theme="dark"] .appEditor.isHidden{opacity:.68}
+html[data-theme="dark"] .drawerhead,
+html[data-theme="dark"] .settingshead,
+html[data-theme="dark"] .loginEditor .loginContent{border-color:#36475a}
+html[data-theme="dark"] #tabPickerItems button.selected{background:#213d60;color:#b6d9ff}
+html[data-theme="dark"] .loginEditor[open]{background:#192638}
+html[data-theme="dark"] #mobileStage{background:radial-gradient(ellipse at 50% 20%,#23344b,#101722 75%)}
+html[data-theme="dark"] #phoneFrame{background:#0b1017}
+
+/* End-to-end horizontal tab strip; move fullscreen, settings and frame controls into navigation row. */
+#toprow{width:100%;padding:0;-webkit-app-region:drag}
+#tabStrip{width:100%;margin:0;overflow:hidden;-webkit-app-region:drag}
+#tabViewport,#tabs{-webkit-app-region:drag}
+#tabs .tab,.tabNav,#groupFilter{-webkit-app-region:no-drag}
+#toolbar{gap:4px;padding:3px 7px;min-width:0;-webkit-app-region:drag}
+#toolbar>button,#toolbar #address,#browserTools button,#windowControls button{-webkit-app-region:no-drag}
+#toolbar>button{flex:0 0 auto;white-space:nowrap;padding:5px 7px}
+#address{flex:1 1 130px;min-width:74px}
+#browserTools,#windowControls{display:flex;align-items:center;flex:0 0 auto;gap:1px}
+#browserTools{padding:0 2px;border-left:1px solid #dfe6ef}
+#windowControls{padding-left:5px;border-left:1px solid #dfe6ef}
+#browserTools button,#windowControls button{flex:0 0 auto;display:grid;place-items:center;width:28px;height:28px;padding:0;font-size:16px;white-space:nowrap}
+#windowControls button{width:27px;font-size:14px}
+#error{max-width:140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tabPicker{right:8px}
+html[data-theme="dark"] #browserTools,html[data-theme="dark"] #windowControls{border-color:#31465e}
+@media(max-width:1050px){
+  #toolbar{gap:2px;padding:3px 5px}
+  #toolbar>button{padding:4px 6px}
+  #responsivePreview,#closeSignIn,#loginMenu{font-size:0!important;width:30px;min-width:30px;height:28px;padding:0!important}
+  #responsivePreview::before{content:'▯';font-size:16px}
+  #responsivePreview[aria-pressed="true"]::before{content:'▣'}
+  #closeSignIn::before{content:'✕';font-size:14px}
+  #loginMenu::before{content:'☰';font-size:17px}
+  #error{max-width:92px}
+}
+/* Opera-style vertical sidebar with accessible collapsed icons and full-width expanded labels. */
+:root{--sidebar-visible-width:280px}
+#verticalSidebar{position:absolute;top:35px;bottom:0;left:0;width:var(--sidebar-visible-width);
+  display:flex;flex-direction:column;z-index:3;background:#f4f7fb;border-right:1px solid #d9e2ef;overflow:hidden;min-width:0}
+#verticalSidebar[hidden]{display:none}
+.sidebarHead{height:46px;padding:6px 8px;display:flex;align-items:center;gap:7px;flex:0 0 auto;border-bottom:1px solid #e0e8f2}
+.sidebarHead button{flex:0 0 34px;height:32px;display:grid;place-items:center;font-size:18px;padding:0;background:transparent}
+#sidebarHeading{flex:1;min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#verticalGroupFilter{margin:9px 10px 5px;width:calc(100% - 20px);height:33px;border:1px solid #cad7e5;
+  color:#41516b;background:#fff;border-radius:8px;padding:0 8px;font:inherit;font-size:12px}
+#verticalGroupFilter[hidden]{display:none}
+#verticalTabList{min-height:0;flex:1;overflow:auto;display:flex;flex-direction:column;gap:3px;padding:8px 7px;scrollbar-width:thin}
+.sideTab{display:flex;align-items:center;text-align:left;gap:11px;min-width:0;min-height:40px;padding:6px 8px;
+  background:transparent;border-radius:9px;border:1px solid transparent}
+.sideTab:hover{background:#e3ebf7}
+.sideTab.active{background:#e6effc;border-color:#bed3ee;color:#144c91;font-weight:650}
+.sideGlyph{height:29px;width:29px;min-width:29px;display:grid;place-items:center;border-radius:8px;
+  color:#3a5678;background:#dee8f4;font-size:13px;font-weight:750}
+.sideTab.active .sideGlyph{background:#bcd6f8;color:#164d92}
+.sideTabName{flex:1;min-width:0;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.sideTabGroup{max-width:77px;min-width:0;font-size:10px;font-weight:400;color:#697b90;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sideTab.loading .sideGlyph::after{content:'·';font-size:18px}
+#sidebarResizeHandle{position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize}
+#sidebarResizeHandle:focus-visible{outline:2px solid #2467b6;outline-offset:-3px}
+html[data-tab-layout="vertical"] header{height:35px}
+html[data-tab-layout="vertical"] #toprow{display:none}
+html[data-tab-layout="vertical"] #toolbar{height:35px}
+html[data-tab-layout="vertical"] #mobileStage{top:35px;left:var(--sidebar-visible-width)}
+html[data-tab-layout="vertical"] #drawer{top:35px}
+html[data-tab-layout="vertical"] #settings{top:35px}
+html[data-tab-layout="vertical"] #empty{margin-left:var(--sidebar-visible-width)}
+html[data-tab-layout="vertical"] #tabPicker{left:calc(var(--sidebar-visible-width) + 8px);right:auto;top:35px}
+html[data-sidebar-collapsed="true"] #sidebarHeading,
+html[data-sidebar-collapsed="true"] #verticalGroupFilter,
+html[data-sidebar-collapsed="true"] .sideTabName,
+html[data-sidebar-collapsed="true"] .sideTabGroup,
+html[data-sidebar-collapsed="true"] #sidebarResizeHandle{display:none}
+html[data-sidebar-collapsed="true"] .sidebarHead{flex-direction:column;height:auto;padding:7px 4px;gap:3px}
+html[data-sidebar-collapsed="true"] .sidebarHead button{width:38px;min-height:36px;flex:0 0 36px}
+html[data-sidebar-collapsed="true"] #verticalTabList{padding:7px 4px}
+html[data-sidebar-collapsed="true"] .sideTab{justify-content:center;padding:4px 0}
+html[data-sidebar-collapsed="true"] .sideGlyph{min-width:31px;width:31px}
+html[data-theme="dark"] #verticalSidebar{background:#131d2a;border-color:#304359}
+html[data-theme="dark"] .sidebarHead{border-color:#304359}
+html[data-theme="dark"] .sideTab{color:#dbe7f7}
+html[data-theme="dark"] .sideTab.active{background:#24405f;border-color:#395c80;color:#f4f8ff}
+html[data-theme="dark"] .sideGlyph{background:#2b405b;color:#d3e5fb}
+html[data-theme="dark"] .sideTab.active .sideGlyph{background:#335c8a;color:#fff}
+html[data-theme="dark"] .sideTabGroup{color:#a7b7cb}
+html[data-theme="dark"] #verticalGroupFilter{background:#101927;color:#dbe7f7;border-color:#38506a}
+.preferencesRow{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:850px){.preferencesRow{grid-template-columns:1fr}}
+</style></head><body>
+<header>
+<div id="toprow">
+  <div id="tabStrip">
+    <select id="groupFilter" aria-label="Filter application tabs by group" title="Application groups" hidden><option value="all">All apps</option></select>
+    <button class="tabNav" id="tabLeft" hidden aria-label="Scroll tabs left" title="Previous tabs">‹</button>
+    <div id="tabViewport"><nav id="tabs" role="tablist" aria-label="Applications"></nav></div>
+    <button class="tabNav" id="tabRight" hidden aria-label="Scroll tabs right" title="Next tabs">›</button>
+    <button class="tabNav" id="tabPickerButton" hidden aria-label="Search and switch tabs" title="All tabs">▾</button>
+  </div>
+</div>
+<div id="toolbar" aria-label="Navigation and window controls">
+  <button id="back" title="Back" aria-label="Back">◀</button>
+  <button id="forward" title="Forward" aria-label="Forward">▶</button>
+  <button id="reload" title="Reload" aria-label="Reload">↻</button>
+  <button id="home" title="App home" aria-label="App home">⌂</button>
+  <div id="address"></div>
+  <div id="browserTools" role="group" aria-label="Browser and application options">
+    <button id="tabLayoutToggle" title="Switch to vertical tabs" aria-label="Switch to vertical tabs">◧</button>
+    <button id="fullscreenButton" title="Enter full screen (F11)" aria-label="Toggle full screen">⛶</button>
+    <button id="settingsButton" title="Manage applications and demo logins" aria-label="Settings">⚙</button>
+  </div>
+  <button id="responsivePreview" hidden aria-pressed="false" title="Preview this desktop website at phone width without changing its saved display mode">▯ Mobile preview</button>
+  <button id="closeSignIn" hidden title="Close embedded page and return to application">✕ Close Page</button>
+  <span id="error" role="status"></span>
+  <button id="loginMenu" hidden title="Demo logins" aria-label="Open demo logins">☰ Logins</button>
+  <div id="windowControls" role="group" aria-label="Window controls">
+    <button id="minimizeButton" title="Minimize window" aria-label="Minimize window">─</button>
+    <button id="maximizeButton" title="Maximize window" aria-label="Maximize window">□</button>
+    <button id="closeButton" title="Close window" aria-label="Close window">✕</button>
+  </div>
+</div>
+</header>
+<aside id="verticalSidebar" hidden aria-label="Application tabs">
+  <div class="sidebarHead">
+    <button id="sidebarCollapse" title="Collapse application sidebar" aria-label="Collapse application sidebar" aria-expanded="true">☰</button>
+    <strong id="sidebarHeading">Applications</strong>
+    <button id="sidebarSearch" title="Search application tabs (Ctrl+K)" aria-label="Search application tabs">⌕</button>
+  </div>
+  <select id="verticalGroupFilter" aria-label="Filter vertical tabs by group" title="Application groups" hidden><option value="all">All apps</option></select>
+  <nav id="verticalTabList" role="tablist" aria-label="Vertical application tabs"></nav>
+  <div id="sidebarResizeHandle" role="separator" tabindex="0" aria-label="Resize application sidebar" aria-orientation="vertical" title="Drag to resize sidebar"></div>
+</aside>
+<section id="tabPicker" hidden aria-label="All application tabs"><div id="tabPickerHeader"><input id="tabPickerSearch" type="search" placeholder="Search tabs..." aria-label="Search tabs" autocomplete="off"></div><div id="tabPickerItems" role="listbox" aria-label="Select application"></div></section>
+<div id="mobileStage" hidden aria-label="iPhone-style mobile phone preview"><div id="phoneFrame"><div id="dynamicIsland"></div><div id="homeIndicator"></div></div></div>
+<div id="empty" hidden>No visible applications. Open Settings to show a hidden app or add a new application.</div>
+<aside id="drawer" hidden aria-label="Demo login drawer"><div class="drawerhead"><strong id="drawerTitle">Demo logins</strong><button id="closeDrawer">✕ Close</button></div><div id="loginCards"></div></aside>
+<section id="settings" hidden>
+<div class="settingshead"><div><h1>Settings</h1><div class="note">Manage applications and demo accounts, saved on this computer.</div></div><div class="actions"><button id="cancelSettings">Cancel</button><button class="primary" id="saveSettings">Save changes</button></div></div>
+<div class="actions" style="margin:16px 0"><button class="secondary" id="importSettings">↑ Import settings JSON</button><button class="secondary" id="downloadTemplate">↓ Download JSON template</button></div>
+<div id="unlockImport" class="notice" hidden><label class="field">Password for encrypted import<input id="importPassphrase" type="password" autocomplete="off" placeholder="Enter export password"></label><div class="actions" style="margin-top:10px"><button class="primary" id="unlockImportButton">Decrypt and preview</button><button id="cancelImportButton">Cancel import</button></div></div>
+<div class="notice"><strong>Export settings (encrypted JSON)</strong><p class="note">Includes all apps and demo passwords. Set an export password, then save the encrypted file. Keep the password safe, since it cannot be recovered.</p><div class="grid2"><label class="field">Export password<input id="exportPassphrase" type="password" autocomplete="new-password" placeholder="At least 8 characters"></label><label class="field">Confirm password<input id="exportConfirm" type="password" autocomplete="new-password"></label></div><button class="secondary" id="exportSettings" style="margin-top:12px">↓ Export encrypted JSON</button></div>
+<div id="importPreview" class="notice" hidden role="status"></div>
+<div id="securityNote" class="notice"></div>
+<div class="grid2 preferencesRow" style="margin-top:18px"><label class="field">Desktop title<input id="platformTitle" maxlength="100" placeholder="MultiApp Showcase"></label><label class="field">Appearance<select id="themeSelect" aria-label="Appearance theme"><option value="auto">Auto (system)</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label class="field">Tab layout<select id="tabLayoutSelect" aria-label="Tab layout"><option value="horizontal">Horizontal tabs</option><option value="vertical">Vertical sidebar</option></select></label></div><p class="note">The browser chrome follows your appearance preference. Websites that support system colour schemes may also respond; other websites retain their own design.</p>
+<div class="settingsTools"><h2>Applications</h2><div class="actions"><button id="expandAllApps" type="button">Expand all</button><button id="collapseAllApps" type="button">Collapse all</button></div></div><div class="note">Apps can be arranged by drag handle or ↑/↓ arrows even while collapsed. Give apps the same group name to filter them together; use Hide to keep an app configured without showing its tab. Deleting remains a separate action. Stable IDs preserve login sessions.</div>
+<div id="appEditor"></div><button class="secondary" id="addApp">+ Add application</button></section>
+<div id="toast" hidden role="status"></div>
+<script src="vertical-tabs.js"></script>
+<script src="renderer.js"></script></body></html>

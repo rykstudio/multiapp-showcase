@@ -132,18 +132,21 @@ Run tests first with `node --test tests/*.test.js`. Distributables are written t
 
 **Data separation:** The app's identifier changed from `com.rykstudio.multiappdesktop` to `com.rykstudio.multiappshowcase`. It therefore uses a separate Electron userData directory and independent browser sessions. Import encrypted settings from the previous application if you want the same app list; existing cookies and logged-in sessions are not automatically transferred.
 
-### Move this prepared branch into a new GitHub repository
+### Repository
 
-Create an **empty private** GitHub repository named `rykstudio/multiapp-showcase` (do not initialize it with a README, license, or .gitignore). From a local clone of `rykstudio/multiapp-desktop`:
+This is the independent **[rykstudio/multiapp-showcase](https://github.com/rykstudio/multiapp-showcase)** project. It has its own package identity, configuration and saved login sessions, separate from the earlier `multiapp-desktop` application.
+
+Clone and run on Linux, Windows or macOS:
 
 ```bash
-git fetch origin ui/full-width-tabs-toolbar-actions
-git switch ui/full-width-tabs-toolbar-actions
-git remote add showcase https://github.com/rykstudio/multiapp-showcase.git
-git push -u showcase HEAD:main
+git clone https://github.com/rykstudio/multiapp-showcase.git
+cd multiapp-showcase
+npm ci
+node --test tests/*.test.js
+npm start
 ```
 
-This pushes only the finished branch to the new repository's `main`; it does not transfer old release tags or modify `multiapp-desktop`. You can then clone the new repository directly for future development.
+Select horizontal or vertical tabs using the layout button beside the address bar. Vertical tabs can be collapsed to an icon rail or resized by dragging the sidebar edge; choose a default layout in Settings.
 
 The packages bundle Electron and do not require Node.js installed by end users. Linux may still require compatible system libraries. Windows signing and macOS signing/notarization are not configured.
 

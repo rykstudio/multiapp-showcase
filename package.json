@@ -1,0 +1,60 @@
+{
+  "name": "multiapp-showcase",
+  "version": "1.0.0",
+  "description": "MultiApp Showcase: isolated desktop workspace for multiple web applications",
+  "main": "src/main.js",
+  "author": {
+    "name": "RYK Studio",
+    "email": "rykstudio.os@gmail.com"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win nsis portable --x64 --publish never",
+    "build:mac": "electron-builder --mac dmg zip --universal --publish never",
+    "build:linux": "electron-builder --linux AppImage deb --x64 --publish never",
+    "build": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "^45.3.3",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.rykstudio.multiappshowcase",
+    "productName": "MultiApp Showcase",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "config/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/zt-multiapp-desktop.svg"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build/zt-multiapp-desktop.svg"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "build/zt-multiapp-desktop.svg",
+      "executableName": "multiapp-showcase",
+      "synopsis": "MultiApp Showcase"
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "formatVersion": 1,
+  "_instructions": "Full v1.0.0 MultiApp Showcase template. Global theme: auto|light|dark, tabLayout: horizontal|vertical, sidebarCollapsed: boolean, sidebarWidth: integer 180..420. Tabs can switch layouts while open and the sidebar can collapse to icons. Apps retain order, group, hidden and displayMode. Logins belong to individual app IDs and are not shared. Replace example URLs before saving. Expansion state inside Settings is UI-only.",
+  "title": "My MultiApp Showcase",
+  "theme": "auto",
+  "apps": [
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "url": "https://dashboard.example.com",
+      "displayMode": "desktop",
+      "group": "Operations",
+      "hidden": false,
+      "order": 0,
+      "logins": [
+        {
+          "id": "admin_demo",
+          "title": "Administrator",
+          "description": "Demo administrator account with all dashboard features",
+          "username": "admin@example.com",
+          "password": ""
+        },
+        {
+          "id": "viewer_demo",
+          "title": "Read-only Viewer",
+          "description": "Restricted role to demonstrate read-only access",
+          "username": "viewer@example.com",
+          "password": ""
+        }
+      ]
+    },
+    {
+      "id": "fleet",
+      "name": "Fleet Management",
+      "url": "https://fleet.example.com",
+      "displayMode": "desktop",
+      "group": "Operations",
+      "hidden": false,
+      "order": 1,
+      "logins": [
+        {
+          "id": "dispatcher_demo",
+          "title": "Dispatcher",
+          "description": "Manage journeys, vehicles and incoming alerts",
+          "username": "dispatcher@example.com",
+          "password": ""
+        },
+        {
+          "id": "manager_demo",
+          "title": "Fleet Manager",
+          "description": "Reports, fleet metrics and maintenance dashboards",
+          "username": "manager@example.com",
+          "password": ""
+        }
+      ]
+    },
+    {
+      "id": "marketing",
+      "name": "Marketing Portal",
+      "url": "https://marketing.example.com",
+      "displayMode": "mobile",
+      "group": "Marketing",
+      "hidden": false,
+      "order": 2,
+      "logins": []
+    },
+    {
+      "id": "internal_tools",
+      "name": "Internal Tools (hidden)",
+      "url": "https://internal.example.com",
+      "displayMode": "desktop",
+      "group": "Internal",
+      "hidden": true,
+      "order": 3,
+      "logins": []
+    }
+  ],
+  "tabLayout": "vertical",
+  "sidebarCollapsed": false,
+  "sidebarWidth": 280
+}

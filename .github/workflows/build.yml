@@ -1,0 +1,51 @@
+name: Cross-platform builds
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Build and test on pushes and pull requests. GitHub Actions artifact storage is
+# intentionally not used. Local release installers are built from this repository with npm run build:<platform>.
+permissions:
+  contents: read
+concurrency:
+  group: multiapp-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: build:win
+          - os: macos-latest
+            script: build:mac
+          - os: ubuntu-latest
+            script: build:linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate JavaScript syntax and JSON template
+        shell: bash
+        run: |
+          for script in src/*.js; do node --check "$script"; done
+          node -e "const t=require('./config/import-template.json'); if(t.formatVersion!==1 || !Array.isArray(t.apps))process.exit(1)"
+      - name: Run all automated regression tests
+        shell: bash
+        run: node --test tests/*.test.js
+      - name: Package distribution
+        run: npm run ${{ matrix.script }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # Build verification does not upload temporary Actions artifacts.
+      # GitHub Actions artifact storage has reached its quota; versioned
+      # installers are uploaded directly to GitHub Releases by release.yml.
+

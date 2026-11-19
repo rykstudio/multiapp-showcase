@@ -1,0 +1,38 @@
+name: Enterprise foundation validation
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [hardening/**]
+permissions:
+  contents: read
+concurrency:
+  group: enterprise-foundation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    name: Security and regression tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Validate source syntax
+        shell: bash
+        run: |
+          node --check src/main.js
+          node --check src/preload.js
+          node --check src/renderer.js
+          node --check src/settings-db.js
+          node --check src/view-layout.js
+          node --check src/crypto-export.js
+          node --check src/popup-policy.js
+      - name: Run entire Node.js regression suite
+        shell: bash
+        run: node --test tests/*.test.js
+
