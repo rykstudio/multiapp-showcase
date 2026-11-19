@@ -81,6 +81,9 @@ test('downloadable JSON template covers every persisted setting and demo logins'
   }
   assert.ok(tpl.apps.some(a=>a.hidden));
   assert.ok(new Set(tpl.apps.map(a=>a.group)).size>1);
+  assert.ok(Array.isArray(tpl.groups));
+  assert.ok(tpl.groups.length>=3);
+  assert.ok(tpl.apps.every(a=>!a.group||tpl.groups.includes(a.group)));
 });
 test('browser UI exposes appearance, group picker and collapsed app ordering',()=>{
   assert.match(html,/id="themeSelect"/);
@@ -97,5 +100,8 @@ test('browser UI exposes appearance, group picker and collapsed app ordering',()
   assert.match(renderer,/const hide=summaryAction/);
   assert.match(renderer,/class:'loginStatus'/);
   assert.match(renderer,/class:'loginList'/);
-  assert.match(renderer,/field\('Group \(optional\)'/);
+  assert.match(renderer,/const groupControl=el\('select',\{class:'groupSelector'\}\)/);
+  assert.match(renderer,/function renderGroupManager\(\)/);
+  assert.match(html,/id="groupsManager"/);
+  assert.match(html,/id="groupManagerList"/);
 });

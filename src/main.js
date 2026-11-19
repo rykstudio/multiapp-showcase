@@ -8,7 +8,7 @@ const {withSavedOrder,inSavedOrder} = require('./app-order');
 const {canOpenEmbedded}=require('./popup-policy');
 const {calculateBounds,calculateDrawerBounds}=require('./view-layout');
 const {recordDiagnostic}=require('./diagnostics');
-const {theme:validateTheme,group:validateGroup,hidden:validateHidden,tabLayout:validateTabLayout,sidebarCollapsed:validateSidebarCollapsed,sidebarWidth:validateSidebarWidth,visibleApps,nextActiveId}=require('./config-features');
+const {theme:validateTheme,group:validateGroup,groups:validateGroups,hidden:validateHidden,tabLayout:validateTabLayout,sidebarCollapsed:validateSidebarCollapsed,sidebarWidth:validateSidebarWidth,visibleApps,nextActiveId}=require('./config-features');
 
 // Match the installed .desktop filename so GNOME/KDE can associate the running
 // Electron process with the branded app icon instead of an unknown gear icon.
@@ -95,7 +95,7 @@ function sanitizeData(data, previous) {
     if(raw.displayMode!==undefined && !['desktop','mobile'].includes(raw.displayMode))throw new Error('Invalid display mode for '+raw.id);
     return { id:raw.id, name:raw.name.trim(), url:url.toString(), displayMode:raw.displayMode||'desktop', group:validateGroup(raw.group), hidden:validateHidden(raw.hidden), logins };
   });
-  return {title: String(data.title || 'MultiApp Showcase').trim().slice(0,100),theme:validateTheme(data.theme),tabLayout:validateTabLayout(data.tabLayout),sidebarCollapsed:validateSidebarCollapsed(data.sidebarCollapsed),sidebarWidth:validateSidebarWidth(data.sidebarWidth), apps:withSavedOrder(apps)};
+  return {title: String(data.title || 'MultiApp Showcase').trim().slice(0,100),theme:validateTheme(data.theme),tabLayout:validateTabLayout(data.tabLayout),sidebarCollapsed:validateSidebarCollapsed(data.sidebarCollapsed),sidebarWidth:validateSidebarWidth(data.sidebarWidth),groups:validateGroups(data.groups,apps), apps:withSavedOrder(apps)};
 }
 function validateImportedConfig(data) {
   if (!data || typeof data !== 'object' || !Array.isArray(data.apps) || data.apps.length > 40) {
@@ -133,7 +133,7 @@ function validateImportedConfig(data) {
   const hasOrder=apps.some(a=>a.order!==undefined);
   if(hasOrder && (apps.some(a=>a.order===undefined)||new Set(apps.map(a=>a.order)).size!==apps.length))throw new Error('App order must be specified uniquely for every app or omitted entirely');
   if(hasOrder)apps.sort((a,b)=>a.order-b.order);
-  return {title:data.title || 'MultiApp Showcase',theme:validateTheme(data.theme),tabLayout:validateTabLayout(data.tabLayout),sidebarCollapsed:validateSidebarCollapsed(data.sidebarCollapsed),sidebarWidth:validateSidebarWidth(data.sidebarWidth),apps};
+  return {title:data.title || 'MultiApp Showcase',theme:validateTheme(data.theme),tabLayout:validateTabLayout(data.tabLayout),sidebarCollapsed:validateSidebarCollapsed(data.sidebarCollapsed),sidebarWidth:validateSidebarWidth(data.sidebarWidth),groups:validateGroups(data.groups,apps),apps};
 }
 async function importSettings(passphrase) {
   let input,filename;
@@ -163,7 +163,7 @@ async function importSettings(passphrase) {
 }
 async function exportSettings(passphrase) {
   if(typeof passphrase!=='string'||passphrase.length<8)throw new Error('Export password must be at least 8 characters');
-  const body={formatVersion:1,title:config.title,theme:config.theme||'auto',tabLayout:config.tabLayout||'horizontal',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280,apps:config.apps.map(a=>({
+  const body={formatVersion:1,title:config.title,theme:config.theme||'auto',tabLayout:config.tabLayout||'horizontal',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280,groups:config.groups||[],apps:config.apps.map(a=>({
     id:a.id,name:a.name,url:a.url,displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden,order:a.order,logins:a.logins.map(l=>({
       id:l.id,title:l.title,description:l.description,username:l.username,
       password:l.passwordEnc?decryptPassword(l.passwordEnc):''
@@ -172,7 +172,7 @@ async function exportSettings(passphrase) {
   const encrypted=encryptJson(body,passphrase);
   const selected=await dialog.showSaveDialog(win,{
     title:'Export encrypted application settings',
-    defaultPath:path.join(app.getPath('downloads'),'multiapp-settings-encrypted.json'),
+    defaultPath:path.join(app.getPath('downloads'),'multiapp-showcase-settings-encrypted.json'),
     filters:[{name:'Encrypted JSON configuration',extensions:['json']}]
   });
   if(selected.canceled||!selected.filePath)return {cancelled:true};
@@ -183,7 +183,7 @@ async function saveImportTemplate() {
   const template = path.join(__dirname, '../config/import-template.json');
   const selected = await dialog.showSaveDialog(win, {
     title:'Download settings JSON template',
-    defaultPath:path.join(app.getPath('downloads'),'multiapp-settings-template.json'),
+    defaultPath:path.join(app.getPath('downloads'),'multiapp-showcase-settings-template.json'),
     filters:[{name:'JSON configuration',extensions:['json']}]
   });
   if (selected.canceled || !selected.filePath) return {cancelled:true};
@@ -191,7 +191,7 @@ async function saveImportTemplate() {
   return {cancelled:false, filename:path.basename(selected.filePath)};
 }
 function publicConfig() {
-  return {title:config.title,theme:config.theme||'auto',tabLayout:config.tabLayout||'horizontal',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280, apps:config.apps.map(a => ({id:a.id,name:a.name,url:a.url,displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden,order:a.order,logins:a.logins.map(l => ({
+  return {title:config.title,theme:config.theme||'auto',tabLayout:config.tabLayout||'horizontal',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280,groups:config.groups||[], apps:config.apps.map(a => ({id:a.id,name:a.name,url:a.url,displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden,order:a.order,logins:a.logins.map(l => ({
     id:l.id,title:l.title,description:l.description,username:l.username,hasPassword:!!l.passwordEnc
   }))}))};
 }

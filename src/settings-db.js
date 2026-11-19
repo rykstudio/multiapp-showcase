@@ -11,6 +11,7 @@ class SettingsDatabase {
     this.db.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;");
     this.db.exec(
       "CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);" +
+      "CREATE TABLE IF NOT EXISTS application_groups(name TEXT PRIMARY KEY, position INTEGER NOT NULL);" +
       "CREATE TABLE IF NOT EXISTS applications(id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, position INTEGER NOT NULL);" +
       "CREATE TABLE IF NOT EXISTS demo_logins(app_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE, id TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', username TEXT NOT NULL DEFAULT '', password_storage TEXT NOT NULL DEFAULT '', position INTEGER NOT NULL, PRIMARY KEY(app_id,id));"
     );
@@ -60,7 +61,10 @@ class SettingsDatabase {
     const layout=this.db.prepare("SELECT value FROM settings WHERE key='tab_layout'").get()?.value || 'horizontal';
     const collapsed=this.db.prepare("SELECT value FROM settings WHERE key='sidebar_collapsed'").get()?.value || 'false';
     const width=Number(this.db.prepare("SELECT value FROM settings WHERE key='sidebar_width'").get()?.value || 280);
-    return {title,theme:['auto','light','dark'].includes(theme)?theme:'auto',
+    const savedGroups=this.db.prepare("SELECT name FROM application_groups ORDER BY position,name").all().map(row=>row.name);
+    // On first read of older installations, group names still exist on their apps.
+    const groups=[...new Set([...savedGroups,...apps.map(a=>a.group||'').filter(Boolean)])];
+    return {title,groups,theme:['auto','light','dark'].includes(theme)?theme:'auto',
       tabLayout:layout==='vertical'?'vertical':'horizontal',
       sidebarCollapsed:collapsed==='true',
       sidebarWidth:Number.isInteger(width)&&width>=180&&width<=420?width:280,
@@ -72,13 +76,16 @@ class SettingsDatabase {
     this.backup();
     db.exec('BEGIN IMMEDIATE');
     try {
-      db.exec('DELETE FROM demo_logins; DELETE FROM applications;');
+      db.exec('DELETE FROM demo_logins; DELETE FROM applications; DELETE FROM application_groups;');
       db.prepare("INSERT INTO settings(key,value) VALUES('title',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(config.title);
       db.prepare("INSERT INTO settings(key,value) VALUES('theme',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(config.theme||'auto');
       db.prepare("INSERT INTO settings(key,value) VALUES('tab_layout',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(config.tabLayout||'horizontal');
       db.prepare("INSERT INTO settings(key,value) VALUES('sidebar_collapsed',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(!!config.sidebarCollapsed));
       db.prepare("INSERT INTO settings(key,value) VALUES('sidebar_width',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(config.sidebarWidth||280));
       db.prepare("INSERT INTO settings(key,value) VALUES('initialized','1') ON CONFLICT(key) DO UPDATE SET value='1'").run();
+      const groupNames=Array.isArray(config.groups)?config.groups:[...new Set(config.apps.map(a=>a.group||'').filter(Boolean))];
+      const saveGroup=db.prepare('INSERT INTO application_groups(name,position) VALUES (?,?)');
+      groupNames.forEach((name,i)=>saveGroup.run(name,i));
       const apps=db.prepare('INSERT INTO applications(id,name,url,position,display_mode,group_name,is_hidden) VALUES (?,?,?,?,?,?,?)');
       const logins=db.prepare('INSERT INTO demo_logins(app_id,id,title,description,username,password_storage,position) VALUES (?,?,?,?,?,?,?)');
       config.apps.forEach((a,i)=>{

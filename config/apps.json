@@ -4,21 +4,28 @@
     {
       "id": "dashboard",
       "name": "Dashboard",
-      "url": "https://example.com"
+      "url": "https://example.com",
+      "group": "Operations"
     },
     {
       "id": "fleet",
       "name": "Fleet Management",
-      "url": "https://www.wikipedia.org"
+      "url": "https://www.wikipedia.org",
+      "group": "Operations"
     },
     {
       "id": "security",
       "name": "Security Console",
-      "url": "https://www.electronjs.org"
+      "url": "https://www.electronjs.org",
+      "group": "Security"
     }
   ],
   "theme": "auto",
   "tabLayout": "horizontal",
   "sidebarCollapsed": false,
-  "sidebarWidth": 280
+  "sidebarWidth": 280,
+  "groups": [
+    "Operations",
+    "Security"
+  ]
 }

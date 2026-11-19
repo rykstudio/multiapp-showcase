@@ -1,8 +1,17 @@
 {
   "formatVersion": 1,
-  "_instructions": "Full v1.0.0 MultiApp Showcase template. Global theme: auto|light|dark, tabLayout: horizontal|vertical, sidebarCollapsed: boolean, sidebarWidth: integer 180..420. Tabs can switch layouts while open and the sidebar can collapse to icons. Apps retain order, group, hidden and displayMode. Logins belong to individual app IDs and are not shared. Replace example URLs before saving. Expansion state inside Settings is UI-only.",
+  "_instructions": "MultiApp Showcase v1.0.0 plain JSON import template. Both this editable unencrypted JSON and password-protected encrypted exports are supported by Import settings JSON. Define named groups in the groups array, then assign apps by setting each app.group to an exact group name or empty string. Groups may be empty. Unique app IDs and orders are required when order is supplied. Demo passwords are optional and deliberately blank here; they are not visible in the drawer unless stored via Settings. Never share a plaintext JSON file containing real passwords. Appearance auto|light|dark; tabLayout horizontal|vertical; sidebarWidth 180..420; sidebarCollapsed true|false. Import previews changes, Save changes applies them.",
   "title": "My MultiApp Showcase",
   "theme": "auto",
+  "tabLayout": "vertical",
+  "sidebarCollapsed": false,
+  "sidebarWidth": 280,
+  "groups": [
+    "Operations",
+    "Marketing",
+    "Internal",
+    "Personal"
+  ],
   "apps": [
     {
       "id": "dashboard",
@@ -74,8 +83,5 @@
       "order": 3,
       "logins": []
     }
-  ],
-  "tabLayout": "vertical",
-  "sidebarCollapsed": false,
-  "sidebarWidth": 280
+  ]
 }

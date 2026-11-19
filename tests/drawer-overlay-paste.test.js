@@ -41,7 +41,11 @@ test('opening the login drawer does not detach its native browser view',()=>{
 
 test('drawer offers separate Copy and Paste for username and password',()=>{
   assert.match(renderer,/copyIconButton\(login\.id,'username'\),\s*pasteIconButton\(login\.id,'username'\)/);
-  assert.match(renderer,/copyIconButton\(login\.id,'password'\),\s*pasteIconButton\(login\.id,'password'\)/);
+  assert.match(renderer,/const passwordCopy=copyIconButton\(login\.id,'password'\)/);
+  assert.match(renderer,/const passwordPaste=pasteIconButton\(login\.id,'password'\)/);
+  assert.match(renderer,/el\('span',\{class:'credentialLabel',text:'Password'\}\)/);
+  assert.match(renderer,/No password saved/);
+  assert.match(renderer,/passwordCopy\.disabled=true/);
   assert.match(renderer,/async function pasteField\(/);
   assert.match(html,/id="drawerFeedback"/);
   assert.match(html,/\.secretrow\{grid-template-columns:minmax\(0,1fr\) 32px 32px/);

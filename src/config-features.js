@@ -10,6 +10,24 @@ function group(value=''){
   if(typeof value!=='string'||value.length>64)throw new Error('Group must be text of 64 characters or less');
   return value.trim();
 }
+function groups(value,apps=[]){
+  const assigned=[...new Set((apps||[]).map(a=>group(a.group)).filter(Boolean))];
+  if(value===undefined || value===null)return assigned;
+  if(!Array.isArray(value)||value.length>40)throw new Error('Groups must be an array of up to 40 names');
+  const seen=new Set();
+  const names=value.map(raw=>{
+    const name=group(raw);
+    if(!name)throw new Error('Group names cannot be empty');
+    const key=name.toLocaleLowerCase('en-US');
+    if(seen.has(key))throw new Error('Duplicate group: '+name);
+    seen.add(key);
+    return name;
+  });
+  for(const name of assigned){
+    if(!names.includes(name))throw new Error('Application references an undefined group: '+name);
+  }
+  return names;
+}
 function hidden(value=false){
   if(value===undefined || value===null)return false;
   if(typeof value!=='boolean')throw new Error('Hidden must be true or false');
@@ -44,4 +62,4 @@ function moveById(apps,fromId,toId){
   apps.forEach((a,i)=>{a.order=i;});
   return true;
 }
-module.exports={theme,group,hidden,tabLayout,sidebarCollapsed,sidebarWidth,visibleApps,nextActiveId,moveById};
+module.exports={theme,group,groups,hidden,tabLayout,sidebarCollapsed,sidebarWidth,visibleApps,nextActiveId,moveById};
