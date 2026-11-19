@@ -37,7 +37,7 @@ Icon=$icon
 Terminal=false
 StartupNotify=true
 StartupWMClass=$desktop_id
-Categories=Office;Network;Utility;
+Categories=Office;
 ENTRY
 chmod 644 "$desktop_file"
 if command -v desktop-file-validate >/dev/null 2>&1; then
