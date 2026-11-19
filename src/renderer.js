@@ -6,6 +6,7 @@ let lastTabIds='';
 let tabGroupFilter='all';
 let groupOptionsFingerprint='';
 let draggingAppId=null;
+let draggingLogin=null;
 function groupOptionValue(group){return group?'group:'+group:'ungrouped';}
 function visibleTabApps(data){return (data.apps||[]).filter(a=>!a.hidden&&(tabGroupFilter==='all'||tabGroupFilter===groupOptionValue(a.group||'')));}
 function updateGroupSelector(data){
@@ -301,6 +302,16 @@ function reorderApps(fromId,toId){
   renderSettings();
   toast('Application order updated. Save changes to apply.');
 }
+function reorderLogins(app,fromId,toId){
+  if(!draft||!app||fromId===toId)return;
+  const from=app.logins.findIndex(l=>l.id===fromId),to=app.logins.findIndex(l=>l.id===toId);
+  if(from<0||to<0)return;
+  const [login]=app.logins.splice(from,1);
+  app.logins.splice(to,0,login);
+  draggingLogin=null;
+  renderSettings();
+  toast('Demo login order updated. Save changes to apply.');
+}
 function summaryAction(text,description,action){
   const control=button(text,event=>{
     event.preventDefault();
@@ -480,7 +491,7 @@ function renderSettings(){
     const loginTitle=el('div',{class:'settingsTools'},[
       el('div',{},[
         el('h3',{text:'Demo accounts ('+app.logins.length+')'}),
-        el('span',{class:'note',text:'Each account has its own title, username, description and optional demo password.'})
+        el('span',{class:'note',text:'Each account has its own title, username, description and optional demo password. Reorder using the drag handle or ↑/↓ arrows in each account header.'})
       ]),
       el('div',{class:'actions'},[
         button('Expand logins',()=>{for(const l of app.logins)expandedLoginIds.add(loginKey(app.id,l.id));renderSettings();}),
@@ -494,16 +505,46 @@ function renderSettings(){
       const key=loginKey(app.id,login.id);
       box.open=expandedLoginIds.has(key);
       box.addEventListener('toggle',()=>{if(box.open)expandedLoginIds.add(key);else expandedLoginIds.delete(key);});
+      const loginGrip=el('span',{class:'dragGrip',text:'⠿'});
+      loginGrip.title='Drag to reorder '+(login.title||'demo account');
+      loginGrip.setAttribute('role','img');
+      loginGrip.setAttribute('aria-label','Drag handle for '+(login.title||'demo account')+'. Arrow buttons also reorder.');
+      loginGrip.draggable=true;
+      loginGrip.onclick=e=>{e.preventDefault();e.stopPropagation();};
+      loginGrip.ondragstart=e=>{
+        e.stopPropagation();
+        draggingLogin={appId:app.id,loginId:login.id};
+        e.dataTransfer.effectAllowed='move';
+        e.dataTransfer.setData('text/plain','login:'+app.id+':'+login.id);
+      };
+      loginGrip.ondragend=()=>{draggingLogin=null;box.classList.remove('dragTarget');};
+      box.ondragover=e=>{
+        if(draggingLogin?.appId!==app.id||draggingLogin.loginId===login.id)return;
+        e.preventDefault();e.stopPropagation();
+        e.dataTransfer.dropEffect='move';
+        box.classList.add('dragTarget');
+      };
+      box.ondragleave=e=>{if(!box.contains(e.relatedTarget))box.classList.remove('dragTarget');};
+      box.ondrop=e=>{
+        if(draggingLogin?.appId!==app.id)return;
+        e.preventDefault();e.stopPropagation();
+        box.classList.remove('dragTarget');
+        reorderLogins(app,draggingLogin.loginId,login.id);
+      };
       const loginHeading=el('span',{class:'summaryTitle',text:login.title||'New demo account'});
       const loginUsername=el('span',{class:'summaryMeta',text:login.username||'No username'});
       const status=el('span',{class:'loginStatus',text:(login.hasPassword||login.password)?'Password set':'No password'});
-      const loginSummary=el('summary',{},[loginHeading,loginUsername,status]);
+      const upLogin=summaryAction('↑','Move '+(login.title||'demo account')+' up',()=>moveLogin(app,j,-1));
+      const downLogin=summaryAction('↓','Move '+(login.title||'demo account')+' down',()=>moveLogin(app,j,1));
+      upLogin.disabled=j===0;downLogin.disabled=j===app.logins.length-1;
+      const loginSummary=el('summary',{},[
+        loginGrip,loginHeading,loginUsername,status,
+        el('span',{class:'summaryActions'},[upLogin,downLogin])
+      ]);
       box.append(loginSummary);
       const loginContent=el('div',{class:'loginContent'});
       loginContent.append(el('div',{class:'editHead'},[
         el('strong',{text:'Account details'}),
-        button('↑',()=>moveLogin(app,j,-1)),
-        button('↓',()=>moveLogin(app,j,1)),
         button('Remove',()=>{
           if(!confirm('Remove demo account '+login.title+'?'))return;
           app.logins.splice(j,1);renderSettings();
@@ -558,7 +599,13 @@ function moveApp(i,delta){
   renderSettings();
   toast('Tab order updated. Save changes to apply.');
 }
-function moveLogin(a,i,delta){const j=i+delta;if(j<0||j>=a.logins.length)return;[a.logins[i],a.logins[j]]=[a.logins[j],a.logins[i]];renderSettings();}
+function moveLogin(a,i,delta){
+  const j=i+delta;
+  if(!draft||j<0||j>=a.logins.length)return;
+  [a.logins[i],a.logins[j]]=[a.logins[j],a.logins[i]];
+  renderSettings();
+  toast('Demo login order updated. Save changes to apply.');
+}
 function previewImport(result){
   const {apps,logins,filename}=result.summary;
   const existing=draft.apps.length;
