@@ -52,7 +52,7 @@ const expandedAppIds=new Set();
 const expandedLoginIds=new Set();
 const expandedDrawerLoginIds=new Set();
 const initializedDrawerApps=new Set();
-const loginKey=(appId,loginId)=>appId+'::'+loginId;
+const loginKey=(appId,loginId)=>JSON.stringify([appId,loginId]);
 function el(tag,props={},children=[]) {
   const node=document.createElement(tag);
   for(const [k,v] of Object.entries(props)) {
@@ -72,7 +72,8 @@ function el(tag,props={},children=[]) {
 function button(text,fn,cls='') {return el('button',{text,onClick:fn,class:cls});}
 function field(label,value,onChange,props={}) {
   const tag=props.multiline?'textarea':'input';
-  const attributes={value:value??'',placeholder:props.placeholder||'',maxLength:props.maxLength||500,onInput:e=>onChange(e.target.value)};
+  const attributes={value:value??'',placeholder:props.placeholder||'',onInput:e=>onChange(e.target.value)};
+  if(Number.isSafeInteger(props.maxLength)&&props.maxLength>0)attributes.maxLength=props.maxLength;
   if(tag==='input')attributes.type=props.type||'text';
   const input=el(tag,attributes);
   if(props.multiline)input.rows=2;
@@ -328,7 +329,7 @@ function summaryAction(text,description,action){
 }
 function validGroupName(value,except=''){
   const name=String(value||'').trim();
-  if(!name||name.length>64)throw new Error('Enter a group name of 1–64 characters');
+  if(!name)throw new Error('Enter a group name');
   if((draft.groups||[]).some(g=>g!==except&&g.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US')))
     throw new Error('A group with that name already exists');
   return name;
@@ -345,7 +346,7 @@ function renderGroupManager(){
   }
   for(const original of draft.groups){
     const total=draft.apps.filter(a=>a.group===original).length;
-    const name=el('input',{value:original,maxLength:64,type:'text'});
+    const name=el('input',{value:original,type:'text'});
     name.setAttribute('aria-label','Group name for '+original);
     const row=el('div',{class:'groupManagerItem'});
     row.setAttribute('role','listitem');
@@ -377,7 +378,6 @@ $('addGroup').onclick=()=>{
   if(!draft)return;
   const input=$('newGroupName');
   try{
-    if((draft.groups||[]).length>=40)throw new Error('Maximum 40 groups');
     const name=validGroupName(input.value);
     draft.groups.push(name);
     input.value='';
@@ -398,7 +398,7 @@ $('exportAccordion').addEventListener('toggle',()=>{
 function loginGroupOptions(app){return ['',...(app.loginGroups||[])];}
 function renameLoginGroup(app,oldName,nextName){
   const name=String(nextName||'').trim();
-  if(!name||name.length>64)throw new Error('Group name must be 1–64 characters');
+  if(!name)throw new Error('Group name cannot be empty');
   if((app.loginGroups||[]).some(x=>x!==oldName&&x.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US')))
     throw new Error('A demo login group with this name already exists');
   app.loginGroups=app.loginGroups.map(x=>x===oldName?name:x);
@@ -481,8 +481,8 @@ function renderSettings(){
       field('Application name',app.name,v=>{
         app.name=v;
         heading.textContent=(index+1)+'. '+(v||'New application');
-      },{maxLength:100}),
-      field('Stable ID',app.id,v=>app.id=v,{maxLength:48})
+      }),
+      field('Stable ID',app.id,v=>app.id=v)
     ]));
     content.append(field('Website URL',app.url,v=>app.url=v,{placeholder:'https://app.example.com',maxLength:2048}));
     const modeControl=el('select');
@@ -520,11 +520,11 @@ function renderSettings(){
         button('Collapse all groups',()=>{app.loginGroupCollapsed=[...app.loginGroups,''];renderSettings();})
       ])
     ]);
-    const groupInput=el('input',{type:'text',placeholder:'New login group',maxLength:64});
+    const groupInput=el('input',{type:'text',placeholder:'New login group'});
     groupInput.setAttribute('aria-label','New demo login group for '+app.name);
     const addLoginGroup=()=>{
       const name=groupInput.value.trim();
-      if(!name||name.length>64){toast('Enter a group name (1–64 characters)');return;}
+      if(!name){toast('Enter a group name');return;}
       if(app.loginGroups.some(g=>g.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US'))){toast('Group already exists');return;}
       app.loginGroups.push(name);
       renderSettings();
@@ -533,7 +533,7 @@ function renderSettings(){
     groupInput.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addLoginGroup();}};
     groupManager.append(groupHeader,el('div',{class:'newGroupRow'},[groupInput,button('+ Add group',addLoginGroup,'secondary')]));
     for(const group of app.loginGroups){
-      const label=el('input',{value:group,maxLength:64,type:'text'});
+      const label=el('input',{value:group,type:'text'});
       label.setAttribute('aria-label','Rename demo login group '+group);
       const count=app.logins.filter(l=>l.group===group).length;
       groupManager.append(el('div',{class:'groupManagerItem'},[
@@ -633,7 +633,7 @@ function renderSettings(){
         },'danger')
       ]));
       loginContent.append(el('div',{class:'grid2'},[
-        field('Title',login.title,v=>{login.title=v;loginHeading.textContent=v||'New demo account';},{maxLength:100}),
+        field('Title',login.title,v=>{login.title=v;loginHeading.textContent=v||'New demo account';}),
         field('Username / email',login.username,v=>{login.username=v;loginUsername.textContent=v||'No username';},{maxLength:500})
       ]));
       const loginGroupSelect=el('select',{class:'groupSelector'});
@@ -644,7 +644,7 @@ function renderSettings(){
       loginGroupSelect.setAttribute('aria-label','Group for '+login.title);
       loginGroupSelect.onchange=()=>moveLoginToGroup(app,login,loginGroupSelect.value);
       loginContent.append(el('label',{class:'field'},[el('span',{text:'Demo login group'}),loginGroupSelect]));
-      loginContent.append(field('Description',login.description,v=>login.description=v,{multiline:true,maxLength:1000}));
+      loginContent.append(field('Description',login.description,v=>login.description=v,{multiline:true}));
       const pwd=field(login.hasPassword?'Replace saved password (leave blank to keep)':'Password (optional)',login.password||'',v=>{
         login.password=v;
         if(v)login.clearPassword=false;
@@ -771,7 +771,7 @@ $('downloadTemplate').onclick=async()=>{
 };
 $('settingsButton').onclick=()=>current.settingsVisible ? discardSettings() : showSettings();
 $('cancelSettings').onclick=discardSettings;
-$('addApp').onclick=()=>{if(draft.apps.length>=40){toast('Maximum 40 apps');return;}const app={id:id('app'),name:'',url:'https://',displayMode:'desktop',group:'',hidden:false,logins:[]};draft.apps.push(app);expandedAppIds.add(app.id);renderSettings();};
+$('addApp').onclick=()=>{const app={id:id('app'),name:'',url:'https://',displayMode:'desktop',group:'',hidden:false,logins:[]};draft.apps.push(app);expandedAppIds.add(app.id);renderSettings();};
 $('saveSettings').onclick=async()=>{
   if(!draft)return;
   draft.title=$('platformTitle').value;
