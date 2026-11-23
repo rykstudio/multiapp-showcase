@@ -27,7 +27,8 @@
           "title": "Administrator",
           "description": "Demo administrator account with all dashboard features",
           "username": "admin@example.com",
-          "password": ""
+          "password": "",
+          "group": "Team Accounts"
         },
         {
           "id": "viewer_demo",
@@ -36,7 +37,11 @@
           "username": "viewer@example.com",
           "password": ""
         }
-      ]
+      ],
+      "loginGroups": [
+        "Team Accounts"
+      ],
+      "loginGroupCollapsed": []
     },
     {
       "id": "fleet",
@@ -52,7 +57,8 @@
           "title": "Dispatcher",
           "description": "Manage journeys, vehicles and incoming alerts",
           "username": "dispatcher@example.com",
-          "password": ""
+          "password": "",
+          "group": "Team Accounts"
         },
         {
           "id": "manager_demo",
@@ -61,7 +67,11 @@
           "username": "manager@example.com",
           "password": ""
         }
-      ]
+      ],
+      "loginGroups": [
+        "Team Accounts"
+      ],
+      "loginGroupCollapsed": []
     },
     {
       "id": "marketing",
@@ -71,7 +81,11 @@
       "group": "Marketing",
       "hidden": false,
       "order": 2,
-      "logins": []
+      "logins": [],
+      "loginGroups": [
+        "Team Accounts"
+      ],
+      "loginGroupCollapsed": []
     },
     {
       "id": "internal_tools",
@@ -81,7 +95,11 @@
       "group": "Internal",
       "hidden": true,
       "order": 3,
-      "logins": []
+      "logins": [],
+      "loginGroups": [
+        "Team Accounts"
+      ],
+      "loginGroupCollapsed": []
     }
   ]
 }
