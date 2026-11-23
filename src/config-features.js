@@ -7,13 +7,13 @@ function theme(value='auto'){
 }
 function group(value=''){
   if(value===undefined || value===null)return '';
-  if(typeof value!=='string'||value.length>64)throw new Error('Group must be text of 64 characters or less');
+  if(typeof value!=='string')throw new Error('Group must be text');
   return value.trim();
 }
 function groups(value,apps=[]){
   const assigned=[...new Set((apps||[]).map(a=>group(a.group)).filter(Boolean))];
   if(value===undefined || value===null)return assigned;
-  if(!Array.isArray(value)||value.length>40)throw new Error('Groups must be an array of up to 40 names');
+  if(!Array.isArray(value))throw new Error('Groups must be an array');
   const seen=new Set();
   const names=value.map(raw=>{
     const name=group(raw);
