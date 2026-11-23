@@ -308,8 +308,9 @@ function reorderLogins(app,fromId,toId){
   if(!draft||!app||fromId===toId)return;
   const from=app.logins.findIndex(l=>l.id===fromId),to=app.logins.findIndex(l=>l.id===toId);
   if(from<0||to<0)return;
+  const targetGroup=app.logins[to].group||'';
   const [login]=app.logins.splice(from,1);
-  login.group=app.logins[to]?.group||login.group||'';
+  login.group=targetGroup;
   app.logins.splice(to,0,login);
   draggingLogin=null;
   renderSettings();
