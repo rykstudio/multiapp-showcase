@@ -8,6 +8,7 @@ let groupOptionsFingerprint='';
 let draggingAppId=null;
 let draggingLogin=null;
 const expandedDrawerGroups=new Set();
+const initializedDrawerGroups=new Set();
 function groupOptionValue(group){return group?'group:'+group:'ungrouped';}
 function visibleTabApps(data){return (data.apps||[]).filter(a=>!a.hidden&&(tabGroupFilter==='all'||tabGroupFilter===groupOptionValue(a.group||'')));}
 function updateGroupSelector(data){
@@ -851,6 +852,30 @@ async function openDrawer(){
     $('drawer').hidden=false;$('drawerTitle').textContent='Demo logins';
     drawerFeedback('Click a username or password field in the visible website, then use Paste.');
     $('loginCards').replaceChildren();
+    const activeApp=current.apps.find(a=>a.id===current.activeId);
+    const loginGroups=[...(activeApp?.loginGroups||[])];
+    for(const login of demoEntries)if(login.group&&!loginGroups.includes(login.group))loginGroups.push(login.group);
+    const drawerBuckets=new Map();
+    for(const group of ['',...loginGroups]){
+      const groupLogins=demoEntries.filter(l=>(l.group||'')===group);
+      if(!groupLogins.length)continue;
+      const wrapper=el('details',{class:'drawerLoginGroup'});
+      const groupKey=current.activeId+'::'+group;
+      wrapper.open=expandedDrawerGroups.has(groupKey)||
+        (!expandedDrawerGroups.has(groupKey)&&!(activeApp?.loginGroupCollapsed||[]).includes(group)&&!initializedDrawerGroups.has(groupKey));
+      initializedDrawerGroups.add(groupKey);
+      wrapper.addEventListener('toggle',()=>{
+        if(wrapper.open)expandedDrawerGroups.add(groupKey);else expandedDrawerGroups.delete(groupKey);
+      });
+      wrapper.append(el('summary',{},[
+        el('span',{class:'summaryTitle',text:group||'Ungrouped'}),
+        el('span',{class:'summaryMeta',text:groupLogins.length+' accounts'})
+      ]));
+      const items=el('div',{class:'drawerGroupContent'});
+      wrapper.append(items);
+      drawerBuckets.set(group,items);
+      $('loginCards').append(wrapper);
+    }
     for(const login of demoEntries){
       const card=el('details',{class:'loginCard'});
       const key=loginKey(current.activeId,login.id);
@@ -887,7 +912,7 @@ async function openDrawer(){
         ])
       ]));
       card.append(details);
-      $('loginCards').append(card);
+      (drawerBuckets.get(login.group||'')||drawerBuckets.get('')).append(card);
     }
   }catch(err){toast(err.message);}
 }
