@@ -92,6 +92,28 @@ function decryptPassword(value) {
   if (!encryptionReady())throw new Error('Cannot read a legacy encrypted password without its OS keyring.');
   return safeStorage.decryptString(Buffer.from(value,'base64'));
 }
+function validateLoginGroups(raw,logins){
+  const supplied=raw.loginGroups===undefined?[]:raw.loginGroups;
+  if(!Array.isArray(supplied))throw new Error('Demo login groups must be an array');
+  const names=[];
+  for(const value of supplied){
+    if(typeof value!=='string'||!value.trim()||value.length>64)throw new Error('Invalid demo login group name');
+    const name=value.trim();
+    if(names.some(x=>x.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US')))throw new Error('Duplicate demo login group');
+    names.push(name);
+  }
+  for(const login of logins){
+    if(login.group&&!names.includes(login.group))names.push(login.group);
+  }
+  const collapsed=raw.loginGroupCollapsed===undefined?[]:raw.loginGroupCollapsed;
+  if(!Array.isArray(collapsed)||collapsed.some(x=>typeof x!=='string'||!names.includes(x)))throw new Error('Invalid collapsed demo login groups');
+  return {loginGroups:names,loginGroupCollapsed:[...new Set(collapsed)]};
+}
+function validateLoginGroup(value){
+  if(value===undefined||value===null||value==='')return '';
+  if(typeof value!=='string'||!value.trim()||value.length>64)throw new Error('Invalid demo login group');
+  return value.trim();
+}
 function sanitizeData(data, previous) {
   if (!data || !Array.isArray(data.apps) || data.apps.length > 40) throw new Error('Configuration must have no more than 40 apps');
   const seen = new Set();
@@ -103,7 +125,7 @@ function sanitizeData(data, previous) {
     let url;
     try { url = new URL(raw.url); } catch { throw new Error('Invalid URL for ' + raw.id); }
     if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP(S) URLs are accepted');
-    if (!Array.isArray(raw.logins || []) || (raw.logins || []).length > 50) throw new Error('Maximum 50 demo logins per application');
+    if (!Array.isArray(raw.logins || [])) throw new Error('Demo logins must be an array');
     const oldLogins = new Map((oldApps.get(raw.id)?.logins || []).map(a => [a.id, a]));
     const loginIds = new Set();
     const logins = (raw.logins || []).map((login, n) => {
@@ -119,10 +141,10 @@ function sanitizeData(data, previous) {
         passwordEnc = encryptPassword(login.password);
       }
       if (login.clearPassword === true) passwordEnc = '';
-      return { id: login.id, title: login.title.trim(), description, username, passwordEnc };
+      return { id: login.id, title: login.title.trim(), description, username, group:validateLoginGroup(login.group), passwordEnc };
     });
     if(raw.displayMode!==undefined && !['desktop','mobile'].includes(raw.displayMode))throw new Error('Invalid display mode for '+raw.id);
-    return { id:raw.id, name:raw.name.trim(), url:url.toString(), displayMode:raw.displayMode||'desktop', group:validateGroup(raw.group), hidden:validateHidden(raw.hidden), logins };
+    return { id:raw.id, name:raw.name.trim(), url:url.toString(), displayMode:raw.displayMode||'desktop', group:validateGroup(raw.group), hidden:validateHidden(raw.hidden), ...validateLoginGroups(raw,logins), logins };
   });
   return {title: String(data.title || 'MultiApp Showcase').trim().slice(0,100),theme:validateTheme(data.theme),tabLayout:validateTabLayout(data.tabLayout),sidebarCollapsed:validateSidebarCollapsed(data.sidebarCollapsed),sidebarWidth:validateSidebarWidth(data.sidebarWidth),groups:validateGroups(data.groups,apps), apps:withSavedOrder(apps)};
 }
@@ -141,7 +163,6 @@ function validateImportedConfig(data) {
     try { url = new URL(a.url); } catch { throw new Error('Invalid URL for ' + a.id); }
     if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP(S) URLs are accepted');
     if (a.logins !== undefined && !Array.isArray(a.logins)) throw new Error('Logins must be an array in ' + a.id);
-    if ((a.logins || []).length > 50) throw new Error('Maximum 50 logins per application');
     const loginIds = new Set();
     const logins = (a.logins || []).map((l, j) => {
       if (!l || typeof l.id !== 'string' || !/^[a-zA-Z0-9_-]{1,48}$/.test(l.id) || loginIds.has(l.id)) throw new Error('Invalid or duplicate login ID at ' + a.id + ':' + (j+1));
@@ -151,12 +172,12 @@ function validateImportedConfig(data) {
       if (l.password !== undefined && (typeof l.password !== 'string' || l.password.length > 2048)) throw new Error('Invalid password in ' + a.id);
       if (l.username !== undefined && (typeof l.username !== 'string' || l.username.length > 500)) throw new Error('Invalid username in ' + a.id);
       if (l.description !== undefined && (typeof l.description !== 'string' || l.description.length > 1000)) throw new Error('Invalid description in ' + a.id);
-      return {id:l.id,title:l.title.trim(),description:l.description || '',username:l.username || '',password:l.password || ''};
+      return {id:l.id,title:l.title.trim(),description:l.description || '',username:l.username || '',group:validateLoginGroup(l.group),password:l.password || ''};
     });
     if(a.displayMode!==undefined && !['desktop','mobile'].includes(a.displayMode))throw new Error('Invalid display mode for '+a.id);
     const order=a.order;
     if(order!==undefined && (!Number.isSafeInteger(order)||order<0))throw new Error('Invalid order for '+a.id);
-    return {id:a.id,name:a.name.trim(),url:url.toString(),displayMode:a.displayMode||'desktop',group:validateGroup(a.group),hidden:validateHidden(a.hidden),order,logins};
+    return {id:a.id,name:a.name.trim(),url:url.toString(),displayMode:a.displayMode||'desktop',group:validateGroup(a.group),hidden:validateHidden(a.hidden),order,...validateLoginGroups(a,logins),logins};
   });
   if (data.title !== undefined && (typeof data.title !== 'string' || data.title.length > 100)) throw new Error('Invalid platform title');
   const hasOrder=apps.some(a=>a.order!==undefined);
@@ -178,7 +199,7 @@ async function importSettings(passphrase) {
     });
     if(selected.canceled||!selected.filePaths.length)return {cancelled:true};
     const file=selected.filePaths[0];
-    if(fs.statSync(file).size>1024*1024)throw new Error('Import JSON exceeds 1 MB');
+    if(fs.statSync(file).size>32*1024*1024)throw new Error('Import JSON exceeds 32 MB');
     filename=path.basename(file);
     input=JSON.parse(fs.readFileSync(file,'utf8'));
     if(input?.format==='multiapp-encrypted-settings'){
@@ -193,8 +214,8 @@ async function importSettings(passphrase) {
 async function exportSettings(passphrase) {
   if(typeof passphrase!=='string'||passphrase.length<8)throw new Error('Export password must be at least 8 characters');
   const body={formatVersion:1,title:config.title,theme:config.theme||'auto',tabLayout:config.tabLayout||'horizontal',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280,groups:config.groups||[],apps:config.apps.map(a=>({
-    id:a.id,name:a.name,url:a.url,displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden,order:a.order,logins:a.logins.map(l=>({
-      id:l.id,title:l.title,description:l.description,username:l.username,
+    id:a.id,name:a.name,url:a.url,displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden,order:a.order,loginGroups:a.loginGroups||[],loginGroupCollapsed:a.loginGroupCollapsed||[],logins:a.logins.map(l=>({
+      id:l.id,title:l.title,description:l.description,username:l.username,group:l.group||'',
       password:l.passwordEnc?decryptPassword(l.passwordEnc):''
     }))
   }))};
@@ -220,8 +241,8 @@ async function saveImportTemplate() {
   return {cancelled:false, filename:path.basename(selected.filePath)};
 }
 function publicConfig() {
-  return {title:config.title,theme:config.theme||'auto',tabLayout:config.tabLayout||'horizontal',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280,groups:config.groups||[], apps:config.apps.map(a => ({id:a.id,name:a.name,url:a.url,displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden,order:a.order,logins:a.logins.map(l => ({
-    id:l.id,title:l.title,description:l.description,username:l.username,hasPassword:!!l.passwordEnc
+  return {title:config.title,theme:config.theme||'auto',tabLayout:config.tabLayout||'horizontal',sidebarCollapsed:!!config.sidebarCollapsed,sidebarWidth:config.sidebarWidth||280,groups:config.groups||[], apps:config.apps.map(a => ({id:a.id,name:a.name,url:a.url,displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden,order:a.order,loginGroups:a.loginGroups||[],loginGroupCollapsed:a.loginGroupCollapsed||[],logins:a.logins.map(l => ({
+    id:l.id,title:l.title,description:l.description,username:l.username,group:l.group||'',hasPassword:!!l.passwordEnc
   }))}))};
 }
 function saveLayoutPreferences(next) {
@@ -621,7 +642,7 @@ app.whenReady().then(()=>{
   });
   secureHandle('login:list',(_e,id)=>{
     if(id!==activeId)return [];
-    return (config.apps.find(a=>a.id===id)?.logins || []).map(l=>({id:l.id,title:l.title,description:l.description,username:l.username,hasPassword:!!l.passwordEnc}));
+    return (config.apps.find(a=>a.id===id)?.logins || []).map(l=>({id:l.id,title:l.title,description:l.description,username:l.username,group:l.group||'',hasPassword:!!l.passwordEnc}));
   });
   secureHandle('login:copy',(_e,d)=>d&&copyLogin(d.id,d.loginId,d.field));
   secureHandle('login:paste',(_e,d)=>d?pasteLogin(d.id,d.loginId,d.field):{ok:false});
