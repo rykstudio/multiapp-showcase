@@ -309,6 +309,7 @@ function reorderLogins(app,fromId,toId){
   const from=app.logins.findIndex(l=>l.id===fromId),to=app.logins.findIndex(l=>l.id===toId);
   if(from<0||to<0)return;
   const [login]=app.logins.splice(from,1);
+  login.group=app.logins[to]?.group||login.group||'';
   app.logins.splice(to,0,login);
   draggingLogin=null;
   renderSettings();
@@ -615,7 +616,8 @@ function renderSettings(){
       const status=el('span',{class:'loginStatus',text:(login.hasPassword||login.password)?'Password set':'No password'});
       const upLogin=summaryAction('↑','Move '+(login.title||'demo account')+' up',()=>moveLogin(app,j,-1));
       const downLogin=summaryAction('↓','Move '+(login.title||'demo account')+' down',()=>moveLogin(app,j,1));
-      upLogin.disabled=j===0;downLogin.disabled=j===app.logins.length-1;
+      const members=app.logins.filter(l=>(l.group||'')===(login.group||''));
+       upLogin.disabled=members[0]===login;downLogin.disabled=members[members.length-1]===login;
       const loginSummary=el('summary',{},[
         loginGrip,loginHeading,loginUsername,status,
         el('span',{class:'summaryActions'},[upLogin,downLogin])
@@ -688,8 +690,12 @@ function moveApp(i,delta){
   toast('Tab order updated. Save changes to apply.');
 }
 function moveLogin(a,i,delta){
-  const j=i+delta;
-  if(!draft||j<0||j>=a.logins.length)return;
+  if(!draft||!a.logins[i])return;
+  const group=a.logins[i].group||'';
+  const indices=a.logins.map((l,j)=>(l.group||'')===group?j:-1).filter(j=>j>=0);
+  const pos=indices.indexOf(i);
+  const j=indices[pos+delta];
+  if(j===undefined)return;
   [a.logins[i],a.logins[j]]=[a.logins[j],a.logins[i]];
   renderSettings();
   toast('Demo login order updated. Save changes to apply.');
