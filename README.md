@@ -125,7 +125,10 @@ The **☰ Logins** drawer within a running website now uses its own compact coll
 
 ## Demo login editor
 
-Under each website, use **+ Add demo login** to add as many as 50 demo accounts with separate titles and descriptions. Complete the title and username (and optionally a password), then click **Save changes**. If the OS secure credential store is unavailable, packaged builds refuse new passwords and display a warning. Existing legacy plaintext values may remain until cleared or reencrypted. Do not use demo credentials as production passwords.
+Demo accounts support independent groups within each application. Create, rename, or delete groups under **Demo login groups**, assign accounts with their Group selectors, and expand or collapse individual groups or all groups. Existing accounts are automatically placed in **Ungrouped**. Group membership and collapsed state are saved in SQLite and preserved by encrypted export/import. There is no 50-login-per-app restriction, though performance depends on available device resources.
+
+
+Under each website, use **+ Add demo login** to add any number of demo accounts with separate titles and descriptions. Complete the title and username (and optionally a password), then click **Save changes**. If the OS secure credential store is unavailable, packaged builds refuse new passwords and display a warning. Existing legacy plaintext values may remain until cleared or reencrypted. Do not use demo credentials as production passwords.
 
 ### Login drawer, Copy and Paste
 
