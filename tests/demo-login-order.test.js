@@ -58,8 +58,8 @@ test('demo-login headers have drag handles and up/down buttons',()=>{
     'reorderLogins(app,draggingLogin.loginId,login.id)',
     "summaryAction('↑'",
     "summaryAction('↓'",
-    'upLogin.disabled=j===0',
-    'downLogin.disabled=j===app.logins.length-1',
+    'upLogin.disabled=members[0]===login',
+    'downLogin.disabled=members[members.length-1]===login',
     "class:'summaryActions'},[upLogin,downLogin]"
   ])assert.ok(part.includes(token),'Missing '+token);
   assert.ok(html.includes('.loginEditor.dragTarget'));
