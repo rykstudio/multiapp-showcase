@@ -18,9 +18,9 @@ test('Groups validation permits empty groups, derives legacy groups and rejects 
   assert.deepEqual(groups(['Operations','Unused'],[{group:'Operations'}]),['Operations','Unused']);
   assert.throws(()=>groups(['Operations','operations']),/Duplicate group/);
   assert.throws(()=>groups(['']),/Group names cannot be empty/);
-  assert.throws(()=>groups(['a'.repeat(65)]),/Group must be text/);
+  assert.deepEqual(groups(['a'.repeat(165)]),['a'.repeat(165)]);
   assert.throws(()=>groups(['Operations'],[{group:'Sales'}]),/undefined group/);
-  assert.throws(()=>groups(Array(41).fill('x')),/up to 40/);
+  assert.equal(groups(Array.from({length:65},(_,i)=>'Group '+i)).length,65);
 });
 
 test('SQLite preserves group definitions independently of app assignment',()=>{
