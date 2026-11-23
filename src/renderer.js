@@ -7,6 +7,7 @@ let tabGroupFilter='all';
 let groupOptionsFingerprint='';
 let draggingAppId=null;
 let draggingLogin=null;
+const expandedDrawerGroups=new Set();
 function groupOptionValue(group){return group?'group:'+group:'ungrouped';}
 function visibleTabApps(data){return (data.apps||[]).filter(a=>!a.hidden&&(tabGroupFilter==='all'||tabGroupFilter===groupOptionValue(a.group||'')));}
 function updateGroupSelector(data){
@@ -391,6 +392,24 @@ $('exportAccordion').addEventListener('toggle',()=>{
     $('exportConfirm').value='';
   }
 });
+function loginGroupOptions(app){return ['',...(app.loginGroups||[])];}
+function renameLoginGroup(app,oldName,nextName){
+  const name=String(nextName||'').trim();
+  if(!name||name.length>64)throw new Error('Group name must be 1–64 characters');
+  if((app.loginGroups||[]).some(x=>x!==oldName&&x.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US')))
+    throw new Error('A demo login group with this name already exists');
+  app.loginGroups=app.loginGroups.map(x=>x===oldName?name:x);
+  app.loginGroupCollapsed=(app.loginGroupCollapsed||[]).map(x=>x===oldName?name:x);
+  for(const login of app.logins)if(login.group===oldName)login.group=name;
+}
+function moveLoginToGroup(app,login,name){
+  login.group=name;
+  const index=app.logins.indexOf(login);
+  app.logins.splice(index,1);
+  const last=app.logins.findLastIndex(l=>(l.group||'')===name);
+  app.logins.splice(last+1,0,login);
+  renderSettings();
+}
 function renderSettings(){
   if(!draft)return;
   draft.title=$('platformTitle').value||draft.title;
@@ -488,6 +507,45 @@ function renderSettings(){
       el('label',{class:'field'},[el('span',{text:'Display mode'}),modeControl]),
       el('label',{class:'field'},[el('span',{text:'Group'}),groupControl])
     ]));
+    app.loginGroups||=[];
+    app.loginGroupCollapsed||=[];
+    const groupManager=el('div',{class:'loginGroupsManager'});
+    const groupHeader=el('div',{class:'settingsTools'},[
+      el('strong',{text:'Demo login groups'}),
+      el('div',{class:'actions'},[
+        button('Expand all groups',()=>{app.loginGroupCollapsed=[];renderSettings();}),
+        button('Collapse all groups',()=>{app.loginGroupCollapsed=[...app.loginGroups,''];renderSettings();})
+      ])
+    ]);
+    const groupInput=el('input',{type:'text',placeholder:'New login group',maxLength:64});
+    groupInput.setAttribute('aria-label','New demo login group for '+app.name);
+    const addLoginGroup=()=>{
+      const name=groupInput.value.trim();
+      if(!name||name.length>64){toast('Enter a group name (1–64 characters)');return;}
+      if(app.loginGroups.some(g=>g.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US'))){toast('Group already exists');return;}
+      app.loginGroups.push(name);
+      renderSettings();
+      toast('Demo login group created. Save changes to apply.');
+    };
+    groupInput.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addLoginGroup();}};
+    groupManager.append(groupHeader,el('div',{class:'newGroupRow'},[groupInput,button('+ Add group',addLoginGroup,'secondary')]));
+    for(const group of app.loginGroups){
+      const label=el('input',{value:group,maxLength:64,type:'text'});
+      label.setAttribute('aria-label','Rename demo login group '+group);
+      const count=app.logins.filter(l=>l.group===group).length;
+      groupManager.append(el('div',{class:'groupManagerItem'},[
+        label,el('span',{class:'groupManagerCount',text:count+' logins'}),
+        button('Rename',()=>{try{renameLoginGroup(app,group,label.value);renderSettings();}catch(e){toast(e.message);}}),
+        button('Delete',()=>{
+          if(!confirm('Delete login group "'+group+'"? Its '+count+' accounts will become ungrouped.'))return;
+          app.loginGroups=app.loginGroups.filter(g=>g!==group);
+          app.loginGroupCollapsed=app.loginGroupCollapsed.filter(g=>g!==group);
+          for(const login of app.logins)if(login.group===group)login.group='';
+          renderSettings();
+        },'danger')
+      ]));
+    }
+    content.append(groupManager);
     const loginTitle=el('div',{class:'settingsTools'},[
       el('div',{},[
         el('h3',{text:'Demo accounts ('+app.logins.length+')'}),
@@ -500,6 +558,26 @@ function renderSettings(){
     ]);
     content.append(loginTitle);
     const loginList=el('div',{class:'loginList'});
+    const loginBuckets=new Map();
+    for(const group of loginGroupOptions(app)){
+      const wrapper=el('details',{class:'loginGroup'});
+      wrapper.open=!app.loginGroupCollapsed.includes(group);
+      wrapper.addEventListener('toggle',()=>{
+        const collapsed=new Set(app.loginGroupCollapsed||[]);
+        if(wrapper.open)collapsed.delete(group);else collapsed.add(group);
+        app.loginGroupCollapsed=[...collapsed];
+        reportSettingsChanges();
+      });
+      const count=app.logins.filter(l=>(l.group||'')===group).length;
+      wrapper.append(el('summary',{},[
+        el('span',{class:'summaryTitle',text:group||'Ungrouped'}),
+        el('span',{class:'summaryMeta',text:count+' accounts'})
+      ]));
+      const bucket=el('div',{class:'loginGroupContent'});
+      wrapper.append(bucket);
+      loginBuckets.set(group,bucket);
+      loginList.append(wrapper);
+    }
     app.logins.forEach((login,j)=>{
       const box=el('details',{class:'loginEditor'});
       const key=loginKey(app.id,login.id);
@@ -554,6 +632,14 @@ function renderSettings(){
         field('Title',login.title,v=>{login.title=v;loginHeading.textContent=v||'New demo account';},{maxLength:100}),
         field('Username / email',login.username,v=>{login.username=v;loginUsername.textContent=v||'No username';},{maxLength:500})
       ]));
+      const loginGroupSelect=el('select',{class:'groupSelector'});
+      for(const group of loginGroupOptions(app)){
+        const option=el('option',{text:group||'Ungrouped'});option.value=group;loginGroupSelect.append(option);
+      }
+      loginGroupSelect.value=login.group||'';
+      loginGroupSelect.setAttribute('aria-label','Group for '+login.title);
+      loginGroupSelect.onchange=()=>moveLoginToGroup(app,login,loginGroupSelect.value);
+      loginContent.append(el('label',{class:'field'},[el('span',{text:'Demo login group'}),loginGroupSelect]));
       loginContent.append(field('Description',login.description,v=>login.description=v,{multiline:true,maxLength:1000}));
       const pwd=field(login.hasPassword?'Replace saved password (leave blank to keep)':'Password (optional)',login.password||'',v=>{
         login.password=v;
@@ -567,14 +653,15 @@ function renderSettings(){
         renderSettings();
       },'danger'));
       box.append(loginContent);
-      loginList.append(box);
+      (loginBuckets.get(login.group||'')||loginBuckets.get('')).append(box);
     });
     content.append(loginList);
     content.append(button('+ Add demo account',()=>{
-      if(app.logins.length>=50){toast('Maximum 50 demo accounts per app');return;}
       const login={id:id('login'),title:'Demo account '+(app.logins.length+1),description:'',username:'',password:''};
+      login.group='';
       app.logins.push(login);
       expandedAppIds.add(app.id);
+      app.loginGroupCollapsed=app.loginGroupCollapsed.filter(g=>g!=='');
       expandedLoginIds.add(loginKey(app.id,login.id));
       renderSettings();
       const cards=target.children[index]?.querySelectorAll('.loginEditor');
