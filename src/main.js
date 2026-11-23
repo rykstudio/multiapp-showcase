@@ -2,6 +2,7 @@
 const { app, BrowserWindow, BrowserView, WebContentsView, ipcMain, shell, session, Menu, clipboard, safeStorage, dialog, nativeTheme, nativeImage, ImageView } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const {createHash} = require('node:crypto');
 const {SettingsDatabase}=require('./settings-db');
 const {encryptJson,decryptJson}=require('./crypto-export');
 const {withSavedOrder,inSavedOrder} = require('./app-order');
@@ -92,12 +93,21 @@ function decryptPassword(value) {
   if (!encryptionReady())throw new Error('Cannot read a legacy encrypted password without its OS keyring.');
   return safeStorage.decryptString(Buffer.from(value,'base64'));
 }
+function validStableId(value){
+  return typeof value==='string' && !!value.trim() && !/[\u0000-\u001f\u007f]/.test(value);
+}
+function partitionForId(id){
+  // Retain legacy partition paths for existing IDs, preserving cookies and sessions.
+  // Arbitrary Unicode/punctuation IDs use a deterministic, safe hashed partition.
+  return 'persist:multiapp-' + (/^[a-zA-Z0-9_-]{1,48}$/.test(id)
+    ? id : '~' + createHash('sha256').update(id).digest('hex'));
+}
 function validateLoginGroups(raw,logins){
   const supplied=raw.loginGroups===undefined?[]:raw.loginGroups;
   if(!Array.isArray(supplied))throw new Error('Demo login groups must be an array');
   const names=[];
   for(const value of supplied){
-    if(typeof value!=='string'||!value.trim()||value.length>64)throw new Error('Invalid demo login group name');
+    if(typeof value!=='string'||!value.trim())throw new Error('Invalid demo login group name');
     const name=value.trim();
     if(names.some(x=>x.toLocaleLowerCase('en-US')===name.toLocaleLowerCase('en-US')))throw new Error('Duplicate demo login group');
     names.push(name);
@@ -111,17 +121,17 @@ function validateLoginGroups(raw,logins){
 }
 function validateLoginGroup(value){
   if(value===undefined||value===null||value==='')return '';
-  if(typeof value!=='string'||!value.trim()||value.length>64)throw new Error('Invalid demo login group');
+  if(typeof value!=='string'||!value.trim())throw new Error('Invalid demo login group');
   return value.trim();
 }
 function sanitizeData(data, previous) {
-  if (!data || !Array.isArray(data.apps) || data.apps.length > 40) throw new Error('Configuration must have no more than 40 apps');
+  if (!data || !Array.isArray(data.apps)) throw new Error('Configuration requires an apps array');
   const seen = new Set();
   const oldApps = new Map((previous?.apps || []).map(a => [a.id, a]));
   const apps = inSavedOrder(data.apps).map((raw, i) => {
-    if (!raw || typeof raw.id !== 'string' || !/^[a-zA-Z0-9_-]{1,48}$/.test(raw.id) || seen.has(raw.id)) throw new Error('Invalid or duplicate application ID at row ' + (i + 1));
+    if (!raw || !validStableId(raw.id) || seen.has(raw.id)) throw new Error('Invalid or duplicate application ID at row ' + (i + 1));
     seen.add(raw.id);
-    if (typeof raw.name !== 'string' || !raw.name.trim() || raw.name.length > 100) throw new Error('Application name is required (up to 100 characters)');
+    if (typeof raw.name !== 'string' || !raw.name.trim()) throw new Error('Application name is required');
     let url;
     try { url = new URL(raw.url); } catch { throw new Error('Invalid URL for ' + raw.id); }
     if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Only HTTP(S) URLs are accepted');
@@ -129,10 +139,10 @@ function sanitizeData(data, previous) {
     const oldLogins = new Map((oldApps.get(raw.id)?.logins || []).map(a => [a.id, a]));
     const loginIds = new Set();
     const logins = (raw.logins || []).map((login, n) => {
-      if (!login || typeof login.id !== 'string' || !/^[a-zA-Z0-9_-]{1,48}$/.test(login.id) || loginIds.has(login.id)) throw new Error('Invalid or duplicate login ID in ' + raw.name);
+      if (!login || !validStableId(login.id) || loginIds.has(login.id)) throw new Error('Invalid or duplicate login ID in ' + raw.name);
       loginIds.add(login.id);
-      if (typeof login.title !== 'string' || !login.title.trim() || login.title.length > 100) throw new Error('Demo login title required in ' + raw.name);
-      const description = String(login.description || '').slice(0, 1000);
+      if (typeof login.title !== 'string' || !login.title.trim()) throw new Error('Demo login title required in ' + raw.name);
+      const description = String(login.description || '');
       const username = String(login.username || '').slice(0, 500);
       let passwordEnc = oldLogins.get(login.id)?.passwordEnc || '';
       if(passwordEnc.startsWith('plain:') && encryptionReady())passwordEnc=encryptPassword(passwordEnc.slice(6));
@@ -146,18 +156,18 @@ function sanitizeData(data, previous) {
     if(raw.displayMode!==undefined && !['desktop','mobile'].includes(raw.displayMode))throw new Error('Invalid display mode for '+raw.id);
     return { id:raw.id, name:raw.name.trim(), url:url.toString(), displayMode:raw.displayMode||'desktop', group:validateGroup(raw.group), hidden:validateHidden(raw.hidden), ...validateLoginGroups(raw,logins), logins };
   });
-  return {title: String(data.title || 'MultiApp Showcase').trim().slice(0,100),theme:validateTheme(data.theme),tabLayout:validateTabLayout(data.tabLayout),sidebarCollapsed:validateSidebarCollapsed(data.sidebarCollapsed),sidebarWidth:validateSidebarWidth(data.sidebarWidth),groups:validateGroups(data.groups,apps), apps:withSavedOrder(apps)};
+  return {title: String(data.title || 'MultiApp Showcase').trim(),theme:validateTheme(data.theme),tabLayout:validateTabLayout(data.tabLayout),sidebarCollapsed:validateSidebarCollapsed(data.sidebarCollapsed),sidebarWidth:validateSidebarWidth(data.sidebarWidth),groups:validateGroups(data.groups,apps), apps:withSavedOrder(apps)};
 }
 function validateImportedConfig(data) {
-  if (!data || typeof data !== 'object' || !Array.isArray(data.apps) || data.apps.length > 40) {
-    throw new Error('Import JSON requires an apps array containing no more than 40 apps');
+  if (!data || typeof data !== 'object' || !Array.isArray(data.apps)) {
+    throw new Error('Import JSON requires an apps array');
   }
   if (data.formatVersion !== undefined && data.formatVersion !== 1) throw new Error('Unsupported import format version');
   const ids = new Set();
   const apps = data.apps.map((a, i) => {
-    if (!a || typeof a.id !== 'string' || !/^[a-zA-Z0-9_-]{1,48}$/.test(a.id) || ids.has(a.id)) throw new Error('Invalid or duplicate app ID at row ' + (i + 1));
+    if (!a || !validStableId(a.id) || ids.has(a.id)) throw new Error('Invalid or duplicate app ID at row ' + (i + 1));
     ids.add(a.id);
-    if (typeof a.name !== 'string' || !a.name.trim() || a.name.length > 100) throw new Error('Invalid app name for ' + a.id);
+    if (typeof a.name !== 'string' || !a.name.trim()) throw new Error('Invalid app name for ' + a.id);
     if (typeof a.url !== 'string' || a.url.length > 2048) throw new Error('Invalid URL for ' + a.id);
     let url;
     try { url = new URL(a.url); } catch { throw new Error('Invalid URL for ' + a.id); }
@@ -165,13 +175,13 @@ function validateImportedConfig(data) {
     if (a.logins !== undefined && !Array.isArray(a.logins)) throw new Error('Logins must be an array in ' + a.id);
     const loginIds = new Set();
     const logins = (a.logins || []).map((l, j) => {
-      if (!l || typeof l.id !== 'string' || !/^[a-zA-Z0-9_-]{1,48}$/.test(l.id) || loginIds.has(l.id)) throw new Error('Invalid or duplicate login ID at ' + a.id + ':' + (j+1));
+      if (!l || !validStableId(l.id) || loginIds.has(l.id)) throw new Error('Invalid or duplicate login ID at ' + a.id + ':' + (j+1));
       loginIds.add(l.id);
-      if (typeof l.title !== 'string' || !l.title.trim() || l.title.length > 100) throw new Error('Invalid login title for ' + a.id);
+      if (typeof l.title !== 'string' || !l.title.trim()) throw new Error('Invalid login title for ' + a.id);
       if (l.passwordEnc !== undefined || l.clearPassword !== undefined || l.hasPassword !== undefined) throw new Error('Import JSON cannot include internal password fields');
       if (l.password !== undefined && (typeof l.password !== 'string' || l.password.length > 2048)) throw new Error('Invalid password in ' + a.id);
       if (l.username !== undefined && (typeof l.username !== 'string' || l.username.length > 500)) throw new Error('Invalid username in ' + a.id);
-      if (l.description !== undefined && (typeof l.description !== 'string' || l.description.length > 1000)) throw new Error('Invalid description in ' + a.id);
+      if (l.description !== undefined && typeof l.description !== 'string') throw new Error('Invalid description in ' + a.id);
       return {id:l.id,title:l.title.trim(),description:l.description || '',username:l.username || '',group:validateLoginGroup(l.group),password:l.password || ''};
     });
     if(a.displayMode!==undefined && !['desktop','mobile'].includes(a.displayMode))throw new Error('Invalid display mode for '+a.id);
@@ -179,7 +189,7 @@ function validateImportedConfig(data) {
     if(order!==undefined && (!Number.isSafeInteger(order)||order<0))throw new Error('Invalid order for '+a.id);
     return {id:a.id,name:a.name.trim(),url:url.toString(),displayMode:a.displayMode||'desktop',group:validateGroup(a.group),hidden:validateHidden(a.hidden),order,...validateLoginGroups(a,logins),logins};
   });
-  if (data.title !== undefined && (typeof data.title !== 'string' || data.title.length > 100)) throw new Error('Invalid platform title');
+  if (data.title !== undefined && typeof data.title !== 'string') throw new Error('Invalid platform title');
   const hasOrder=apps.some(a=>a.order!==undefined);
   if(hasOrder && (apps.some(a=>a.order===undefined)||new Set(apps.map(a=>a.order)).size!==apps.length))throw new Error('App order must be specified uniquely for every app or omitted entirely');
   if(hasOrder)apps.sort((a,b)=>a.order-b.order);
@@ -362,7 +372,7 @@ function activate(id) {
   emit();
 }
 function createView(item) {
-  const ses = session.fromPartition('persist:multiapp-' + item.id);
+  const ses = session.fromPartition(partitionForId(item.id));
   ses.setPermissionRequestHandler((_wc,_permission,callback) => callback(false));
   ses.setPermissionCheckHandler(()=>false);
   const view = new WebContentsView({webPreferences:{session:ses,sandbox:true,nodeIntegration:false,contextIsolation:true,webSecurity:true}});
