@@ -281,7 +281,7 @@ function state() {
       const entry = entries.get(a.id), wc = (entry?.popup || entry?.view)?.webContents;
       return { id:a.id,name:a.name,url:wc?.getURL() || a.url,
         loading:entry?.loading || false, back:wc?.navigationHistory?.canGoBack() || false, forward:wc?.navigationHistory?.canGoForward() || false,
-        failed:entry?.failed || '', loginCount:a.logins.length, popupActive:!!entry?.popup, popupTitle:entry?.popup ? popupDisplayTitle(entry.popup.webContents) : '', displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden, previewMobile:!!entry?.previewMobile };
+        failed:entry?.failed || '', loginCount:a.logins.length,loginGroups:a.loginGroups||[],loginGroupCollapsed:a.loginGroupCollapsed||[], popupActive:!!entry?.popup, popupTitle:entry?.popup ? popupDisplayTitle(entry.popup.webContents) : '', displayMode:a.displayMode||'desktop',group:a.group||'',hidden:!!a.hidden, previewMobile:!!entry?.previewMobile };
     })};
 }
 function emit() { if (win && !win.isDestroyed()) win.webContents.send('app:state',state()); }
