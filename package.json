@@ -58,5 +58,8 @@
       "syncDesktopName": true
     }
   },
-  "desktopName": "com.rykstudio.multiappshowcase.desktop"
+  "desktopName": "com.rykstudio.multiappshowcase.desktop",
+  "overrides": {
+    "minimatch": "11.0.1"
+  }
 }
