@@ -150,7 +150,7 @@ App and demo login IDs must be nonempty, unique within their respective scope, a
 
 ## Application branding and icons
 
-The original ZT artwork is retained unchanged at `build/zt-multiapp-desktop.svg`. Electron Builder v26 uses that vector source to generate native Windows, macOS and Linux installer icons.
+The original ZT artwork is retained unchanged at `build/zt-multiapp-desktop.svg`. Electron Builder v26 supports the branded SVG as an icon input. For the Ubuntu-only release workflow below, export native Linux PNGs, a Windows ICO, and a macOS ICNS and verify that they are actually present in the packages. Source icon support alone does not prove that a particular installed launcher displays correctly.
 
 **Development mode:** `npm start` bypasses electron-builder's launcher setup. Electron's desktop window therefore explicitly loads the rasterized `src/assets/zt-app-icon.png`, generated from the same SVG. On macOS, development runs set the Dock icon using `app.dock.setIcon`; installed .app bundles embed the platform icon from the vector source. On Linux, the window/taskbar uses the bundled PNG, while installed packages use their launcher icon.
 
@@ -192,6 +192,323 @@ npm start
 Select horizontal or vertical tabs using the layout button beside the address bar. Vertical tabs can be collapsed to an icon rail or resized by dragging the sidebar edge; choose a default layout in Settings.
 
 The packages bundle Electron and do not require Node.js installed by end users. Linux may still require compatible system libraries. Windows signing and macOS signing/notarization are not configured.
+
+
+## v1.0.0 distribution and release from Ubuntu 26.04 LTS
+
+This section is the **full Ubuntu-only release runbook** for repository [rykstudio/multiapp-showcase](https://github.com/rykstudio/multiapp-showcase). It covers local Linux (AppImage and DEB), cross-built Windows x64 (NSIS and portable EXE), and cross-packaged, **unsigned** macOS (separate Intel x64 and Apple Silicon arm64 ZIP archives). **GitHub Actions is not used**. The packages contain Electron and do not require users to install Node.js.
+
+**Release boundary:** Source version `1.0.0` does not mean the release is tested or published. Test the executable and installer on the target OS. In particular, on Ubuntu 26.04 a DEB may install successfully but fail to launch due to sandbox/AppArmor, permissions, or missing desktop resources. Never fix an unverified build by deleting settings, permanently disabling AppArmor or passing `--no-sandbox` in the shipped desktop entry. macOS packages built on Linux are **not** Apple-signed or notarized and may be blocked by Gatekeeper. Windows cross-builds must be tested on Windows.
+
+### v1.0.0 capabilities
+
+- Isolated persistent Chromium session per application, independent cookies and login state; horizontal and vertical tabs, search/overflow, navigation, fullscreen, and in-tab authentication popups.
+- Application groups, visibility (hide without deleting), drag and arrow-based reordering, desktop/mobile modes, and responsive mobile preview.
+- Demo-login groups with names, assignment, expand/collapse, reordering, copy/paste and optional OS-encrypted passwords; no fixed 50-login cap.
+- No application-defined 40-app / 40-group count limit, or old arbitrary title, group-name, login-ID, and description length caps. IDs must remain nonempty, unique within their scopes, and free from control characters. Large configurations still depend on hardware capacity.
+- SQLite local configuration, settings import template, plain JSON import, and password-protected encrypted JSON export. Exported files contain credentials in encrypted form and should be protected.
+
+### 1. Prepare the Ubuntu 26.04 build machine
+
+These instructions assume an x86-64 desktop and an account with permission to publish the GitHub Release.
+
+```bash
+sudo apt update
+sudo apt install -y git curl ca-certificates build-essential python3 \
+  zip unzip xz-utils p7zip-full wine64 gh inkscape imagemagick \
+  icnsutils desktop-file-utils libfuse2t64
+```
+
+Install Node.js 24 with [nvm](https://github.com/nvm-sh/nvm) (or use an already installed compatible version):
+
+```bash
+# Only needed if nvm is not already installed:
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+source "$HOME/.nvm/nvm.sh"
+nvm install 24
+nvm use 24
+node --version
+npm --version
+wine --version
+gh auth login
+gh auth status
+```
+
+### 2. Prepare clean, tested release source
+
+Use your existing checkout, or clone the repository:
+
+```bash
+mkdir -p "$HOME/Projects"
+cd "$HOME/Projects"
+git clone https://github.com/rykstudio/multiapp-showcase.git
+cd multiapp-showcase
+
+git checkout main
+git pull --ff-only origin main
+git status --short
+npm ci
+node -p "require('./package.json').version"
+node --check src/main.js
+node --check src/renderer.js
+node --check src/settings-db.js
+node --test tests/*.test.js
+```
+
+The version must be `1.0.0` and all tests must pass. Stop and correct failures before building. Any uncommitted edits should be reviewed and committed (or discarded) before tagging the release. Preserve the application data stored under Electron's per-user configuration directory; source cleanup must not delete that database.
+
+### 3. Prepare and verify the branded native icons
+
+The master artwork is `build/zt-multiapp-desktop.svg` and the application uses `src/assets/zt-app-icon.png` at runtime. Convert the same artwork for each platform:
+
+```bash
+mkdir -p build/icons
+for SIZE in 16 24 32 48 64 128 256 512 1024; do
+  inkscape build/zt-multiapp-desktop.svg \
+    --export-type=png \
+    --export-filename="build/icons/$SIZE"x"$SIZE.png" \
+    --export-width="$SIZE" --export-height="$SIZE"
+done
+convert build/icons/16x16.png build/icons/32x32.png \
+  build/icons/48x48.png build/icons/64x64.png \
+  build/icons/128x128.png build/icons/256x256.png build/icon.ico
+png2icns build/icon.icns build/icons/16x16.png \
+  build/icons/32x32.png build/icons/128x128.png \
+  build/icons/256x256.png build/icons/512x512.png
+file build/icon.ico build/icon.icns build/icons/512x512.png
+```
+
+If any icon-generation command fails, fix it before building; do not silently fall back to the Electron icon. The explicit packaging overrides in the next steps use the generated files, leaving the repository's original SVG-backed `package.json` configuration unchanged. To permanently adopt the native icon paths in `package.json`, also update `tests/app-icon.test.js` and commit those changes before the release tag.
+
+### 4. Build and verify Linux AppImage and DEB
+
+First test the unpacked application:
+
+```bash
+npx electron-builder --linux dir --x64 \
+  --config.linux.icon=build/icons --publish never
+ELECTRON_ENABLE_LOGGING=1 ./dist/linux-unpacked/multiapp-showcase \
+  --enable-logging=stderr
+```
+
+Once it opens successfully, build the packages:
+
+```bash
+npx electron-builder --linux AppImage deb --x64 \
+  --config.linux.icon=build/icons --publish never
+ls -lh dist/*.AppImage dist/*.deb
+dpkg-deb -c dist/*.deb | grep -Ei '/applications/.*\.desktop|/icons/|\.png|\.svg'
+```
+
+Back up your existing user data before testing an upgrade. Install and launch the DEB:
+
+```bash
+sudo apt install ./dist/*.deb
+dpkg -L multiapp-showcase | grep -E '\.desktop$|/icons/'
+command -v multiapp-showcase
+multiapp-showcase
+```
+
+The packaged executable may instead be under `/opt/multiapp-showcase/`. Run that exact file with `ELECTRON_ENABLE_LOGGING=1` and `--enable-logging=stderr` to diagnose startup failures. Check the actual installed desktop-file path before validating it:
+
+```bash
+DESKTOP_FILE="$(dpkg -L multiapp-showcase | grep '/applications/.*\.desktop
+
+See [Enterprise Readiness](docs/ENTERPRISE_READINESS.md) for the current control inventory, threat model, backup recovery procedure, release policy and required production go/no-go checks. **This repository is not yet an enterprise-certified or production-approved distribution.**
+
+## Security and limitations
+
+- Embedded content is sandboxed with Node integration disabled, privileged IPC checks the main UI sender and frame, and web permission requests are denied. Allowed popup pages open in their originating tab's embedded view.
+- Demo passwords are **not** placed inside bundled JSON defaults or sent to the web pages by the app. Copy and paste is manual. Legacy entries and existing recovery snapshots may still contain plaintext; new packaged builds refuse new plaintext password storage.
+- An exported encrypted JSON file includes all demo passwords within its encrypted payload. Its AES-256-GCM key is derived from the export passphrase using scrypt (N=32768, r=8, p=1). Protect the export passphrase. The database itself is not encrypted.
+- When upgrading from JSON, a legacy backup file may contain encrypted data from the previous installation. The migration retains this file for rollback/recovery.
+- The OS encryption backend may differ by operating system or Linux desktop configuration. Secure storage is tied to the local OS environment and may not be portable to another machine.
+- Some services do not support OAuth login in embedded browsers.
+- Changing app URL changes the view's home URL but retains its app ID's stored session, including cookies. Configure only trusted websites.
+- Native view windows currently hide while Settings or the demo drawer is open, then restore when closed.
+- This is an MVP. Automated runtime end-to-end and accessibility tests are not yet included.
+ | head -1)"
+test -n "$DESKTOP_FILE"
+desktop-file-validate "$DESKTOP_FILE"
+grep -E '^(Name|Exec|Icon|StartupWMClass)=' "$DESKTOP_FILE"
+gtk-launch "$(basename "$DESKTOP_FILE" .desktop)"
+```
+
+The launcher identity is `com.rykstudio.multiappshowcase.desktop`. Confirm the **branded icon** appears in the Ubuntu application grid **and** Dock, and that the program launches from both the menu and terminal. Remove an obsolete *development-only* launcher from `~/.local/share/applications/` if it shadows the packaged desktop entry; do not delete your settings database. Test the AppImage separately with `chmod +x dist/*.AppImage` and `./dist/*.AppImage`. If AppArmor or sandbox issues occur, diagnose the actual failure and use a narrowly scoped packaging/policy fix rather than shipping a sandbox-disabled application.
+
+### 5. Cross-build Windows from Ubuntu with Wine
+
+```bash
+wine --version
+npx electron-builder --win nsis portable --x64 \
+  --config.win.icon=build/icon.ico --publish never
+find dist -maxdepth 1 -type f -name '*.exe' -ls
+```
+
+This produces a Windows setup executable and a portable EXE. The Windows icon is supplied explicitly as an ICO. Verify the branded taskbar/Start menu icon and both executables on a **Windows machine** before marking them tested. A successful Wine cross-build by itself does not verify Windows runtime behaviour. Signed Windows installers require an appropriate signing setup.
+
+### 6. Cross-package macOS on Ubuntu
+
+The repository's `npm run build:mac` requests a universal DMG/ZIP through Electron Builder; do **not** rely on that script as a supported Ubuntu-only signed DMG workflow. Instead use [Electron Packager](https://github.com/electron/packager) to produce two independent unsigned `.app` bundles. Install it temporarily without changing `package.json` or the lockfile:
+
+```bash
+npm install --no-save --package-lock=false @electron/packager
+
+for ARCH in x64 arm64; do
+  npx electron-packager . "MultiApp Showcase" \
+    --platform=darwin --arch="$ARCH" \
+    --out=dist/mac-cross --overwrite --asar --prune=true \
+    --icon=build/icon.icns \
+    --app-bundle-id=com.rykstudio.multiappshowcase \
+    --ignore='^/dist(/|$)' \
+    --ignore='^/release-ready(/|$)' \
+    --ignore='^/\.git(/|$)'
+done
+```
+
+Archive each bundle on Linux **with symlinks preserved**. Run from the repository root:
+
+```bash
+ROOT="$PWD"
+mkdir -p release-ready/v1.0.0
+for ARCH in x64 arm64; do
+  (
+    cd "dist/mac-cross/MultiApp Showcase-darwin-$ARCH"
+    zip -yr "$ROOT/release-ready/v1.0.0/MultiApp-Showcase-1.0.0-macOS-$ARCH.zip" \
+      "MultiApp Showcase.app"
+  )
+  unzip -t "release-ready/v1.0.0/MultiApp-Showcase-1.0.0-macOS-$ARCH.zip" >/dev/null
+done
+find dist/mac-cross -name '*.icns' -o -name Info.plist
+```
+
+These are **unsigned, unnotarized macOS test distributions**, **not DMGs**. Test the x64 build on an Intel Mac and the ARM64 build on Apple Silicon. macOS Gatekeeper may block unsigned applications. Producing a signed/notarized release requires access to a Mac, an Apple Developer identity, and Apple's signing/notarization services.
+
+### 7. Stage packages and create checksums
+
+```bash
+mkdir -p release-ready/v1.0.0
+find dist -maxdepth 1 -type f \
+  \( -name '*.AppImage' -o -name '*.deb' -o -name '*.exe' \) \
+  -exec cp -v {} release-ready/v1.0.0/ \;
+
+ls -lh release-ready/v1.0.0/
+(
+  cd release-ready/v1.0.0
+  sha256sum *.AppImage *.deb *.exe *.zip > SHA256SUMS.txt
+  sha256sum -c SHA256SUMS.txt
+)
+```
+
+Require two Linux packages, two Windows EXEs, two macOS ZIPs and the checksum file before publishing. Do not upload failures, stale files, or packages you have not tested on the appropriate platform. Packages may be large; confirm network upload bandwidth and available GitHub Release storage.
+
+### 8. Disable Actions and handle prior releases carefully
+
+GitHub Actions minutes are not necessary for manual releases. If you want to prevent the repository's push/PR workflows from running when you push documentation, source, or a tag, disable Actions under **Settings → Actions → General** in GitHub before the push.
+
+Check the existing release/tag:
+
+```bash
+gh release list -R rykstudio/multiapp-showcase --limit 100
+gh release view v1.0.0 -R rykstudio/multiapp-showcase || true
+git ls-remote --tags origin refs/tags/v1.0.0
+```
+
+**Do not delete an existing v1.0.0 release or tag automatically.** Deleting a release breaks existing download links and discards assets. If you intentionally need a clean reset after backing up anything worth keeping:
+
+```bash
+gh release delete v1.0.0 \
+  -R rykstudio/multiapp-showcase --cleanup-tag --yes
+git tag -d v1.0.0 2>/dev/null || true
+```
+
+For other obsolete releases, inspect `gh release list` and delete named tags one by one. Only reset versions that you explicitly intend to replace.
+
+### 9. Tag the tested commit and create a draft Release
+
+Make sure source changes are committed and that the installer packages correspond to that commit:
+
+```bash
+git status --short
+git rev-parse HEAD
+git tag -a v1.0.0 -m "MultiApp Showcase v1.0.0"
+git push origin v1.0.0
+
+gh release create v1.0.0 \
+  -R rykstudio/multiapp-showcase \
+  --verify-tag --draft \
+  --title "MultiApp Showcase v1.0.0" \
+  --notes "Linux x64 AppImage/DEB; Windows x64 Setup/Portable; unsigned macOS Intel and Apple Silicon ZIPs. See README for installation, verification, and unsigned macOS restrictions."
+```
+
+If `v1.0.0` already exists, review whether it already points at the correct tested commit rather than force-moving an existing tag.
+
+### 10. Upload artifacts manually and verify
+
+The GitHub CLI can stall silently on a slow/blocked connection. First check API connectivity with `gh api rate_limit` and upload the small checksum file:
+
+```bash
+gh api rate_limit --jq '.rate.remaining'
+gh release upload v1.0.0 release-ready/v1.0.0/SHA256SUMS.txt \
+  -R rykstudio/multiapp-showcase
+```
+
+Then upload the binaries **one by one** so any failure is easy to identify:
+
+```bash
+find release-ready/v1.0.0 -maxdepth 1 -type f \
+  ! -name SHA256SUMS.txt -print0 |
+while IFS= read -r -d '' FILE; do
+  echo "Uploading $(basename "$FILE")"
+  gh release upload v1.0.0 "$FILE" -R rykstudio/multiapp-showcase
+done
+```
+
+Verify assets and their sizes:
+
+```bash
+gh release view v1.0.0 -R rykstudio/multiapp-showcase \
+  --json assets \
+  --jq '.assets[] | [.name,.size,.state] | @tsv'
+```
+
+If an upload stalls, check the actual GitHub CLI connection and routing, stop only the stalled upload, and retry the missing asset. Avoid `--clobber` unless you deliberately intend to replace an uploaded asset: it removes the old asset before uploading its replacement.
+
+After every required asset is present and tested, publish:
+
+```bash
+gh release edit v1.0.0 -R rykstudio/multiapp-showcase --draft=false
+gh release view v1.0.0 -R rykstudio/multiapp-showcase
+```
+
+Release page: [MultiApp Showcase v1.0.0](https://github.com/rykstudio/multiapp-showcase/releases/tag/v1.0.0).
+
+### Installation instructions for end users
+
+**Ubuntu/Linux (DEB):** Download the matching amd64 `.deb` and run `sudo apt install ./FILENAME.deb` in the download directory. Start **MultiApp Showcase** from the application grid or run `multiapp-showcase`. Test that the Dock icon is the branded icon. If the process does not open, run the installed binary from Terminal to capture the startup error rather than repeatedly reinstalling it. Do not delete your saved SQLite configuration to troubleshoot an installer.
+
+**Linux (AppImage):** Download the x64 `.AppImage`, run `chmod +x "FILENAME.AppImage"` and then `./FILENAME.AppImage`. AppImage integration into the applications grid is not guaranteed; use a trusted desktop integration mechanism if a launcher is desired.
+
+**Windows:** Download either the `Setup 1.0.0.exe` installer or the portable EXE. Launch the installer for a normal Windows installation, or run the portable executable without installing. Windows SmartScreen may warn about unsigned executables; download only from the official repository and verify its SHA-256. The portable build's data-storage location may differ from a conventional installation; check persistence before migration.
+
+**macOS:** Download the correct x64 ZIP for an Intel Mac or arm64 ZIP for an Apple Silicon Mac. Extract the ZIP, then move `MultiApp Showcase.app` to Applications. These Linux-built ZIPs are unsigned/unnotarized; macOS may reject them via Gatekeeper. Only use them for trusted testing until signed, notarized macOS builds are available. Avoid disabling system-wide Gatekeeper protections.
+
+**Verify downloads:** Download `SHA256SUMS.txt` with the release files. On Linux run `sha256sum -c SHA256SUMS.txt` from the directory containing all listed assets; for a single asset, use `sha256sum "FILENAME"` and compare it to the matching checksum line. On other platforms use their equivalent SHA-256 tooling.
+
+### Upgrade and uninstall behaviour
+
+Application settings, demo-login groups and encrypted credentials are kept in the user's Electron data directory, not in the source checkout. Back up that directory before making a major change, especially when testing database migrations. Reinstalling or upgrading a DEB should not require deleting personal configuration; `apt remove` normally leaves per-user data intact. Changing an app ID changes its isolated Chromium partition, so prefer editing the display name rather than changing IDs for cosmetic reasons.
+
+### Release verification checklist
+
+- All automated tests pass, including legacy SQLite migration and long-ID/group tests.
+- The unpacked Linux application, installed DEB and AppImage all launch normally.
+- The DEB contains a desktop entry and branded icon resources; the Ubuntu app grid and Dock show the correct icon.
+- Windows setup and portable EXEs start with the correct icon on Windows.
+- Both macOS ZIPs contain `.app` bundles and native icon resources, unzip successfully, and have been tested on the respective Macs.
+- Grouped demo logins, import/export, password storage and browser sessions continue working across restarts.
+- The Git tag matches the tested source commit, release assets and checksums are complete, and only then is the draft release published.
+
 
 ## Production and enterprise hardening
 
