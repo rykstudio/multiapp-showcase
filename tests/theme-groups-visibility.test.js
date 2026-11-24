@@ -19,7 +19,8 @@ test('validate theme, group and visibility; older configs default safely',()=>{
   assert.throws(()=>theme('neon'),/Theme/);
   assert.equal(group(undefined),'');
   assert.equal(group('  Operations  '),'Operations');
-  assert.throws(()=>group('a'.repeat(65)),/Group/);
+  assert.equal(group('a'.repeat(165)),'a'.repeat(165));
+  assert.throws(()=>group(123),/Group must be text/);
   assert.equal(hidden(undefined),false);
   assert.equal(hidden(true),true);
   assert.throws(()=>hidden('yes'),/Hidden/);
